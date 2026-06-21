@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Coluna | Triagem Educacional</title>
+    <meta
+      name="description"
+      content="Plataforma educacional para apoio na discussão de possíveis lesões cirúrgicas da coluna, materiais e códigos de referência."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-left" aria-hidden="true"></div>
+    <div class="bg-shape bg-shape-right" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand-block">
+        <p class="domain">www.simplecoluna.com</p>
+        <h1>Simple Coluna</h1>
+        <p class="subtitle">Auxilio educacional para discussão de possíveis lesões cirúrgicas da coluna</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="adminToggleBtn" class="admin-btn" type="button">Painel Admin</button>
+        <div class="chip">Versão 0.2</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="landing-hero" aria-label="apresentação da plataforma">
+        <div class="landing-copy">
+          <p class="eyebrow">Portal clínico-educacional</p>
+          <h2>Consulta clara e elegante para possíveis lesões cirúrgicas da coluna.</h2>
+          <p>
+            Uma entrada limpa para acessar a base de conhecimento da Simple Coluna, com busca por região,
+            exploração por hipótese clínica e organização de materiais.
+          </p>
+
+          <div class="landing-actions">
+            <button id="enterPlatformBtn" class="admin-btn" type="button">Entrar na Plataforma</button>
+            <button id="exploreBtn" class="admin-btn secondary" type="button">Ver conteúdo</button>
+          </div>
+        </div>
+
+        <div class="landing-panel">
+          <div class="landing-stat">
+            <span>Triagem</span>
+            <strong>3 regiões</strong>
+            <p>Cervical, torácica e lombar em navegação rápida.</p>
+          </div>
+          <div class="landing-stat">
+            <span>Base dinâmica</span>
+            <strong>Materiais + códigos</strong>
+            <p>Estrutura pronta para crescer com novos casos e implantes.</p>
+          </div>
+          <div class="landing-stat">
+            <span>Acesso direto</span>
+            <strong>Sem login</strong>
+            <p>Entrada imediata ao conteúdo principal e ao painel interno.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="appArea" class="app-area">
+      <section class="alert-box" aria-label="aviso importante">
+        <h2>Aviso importante</h2>
+        <p>
+          Esta ferramenta tem finalidade educacional e não substitui avaliação clínica, exame físico,
+          exames de imagem e decisão médica especializada.
+        </p>
+      </section>
+
+      <section class="controls" aria-label="filtros">
+        <label>
+          Buscar lesão
+          <input id="searchInput" type="search" placeholder="Ex: hérnia lombar" />
+        </label>
+
+        <label>
+          Região
+          <select id="regionFilter">
+            <option value="">Todas</option>
+            <option value="cervical">Cervical</option>
+            <option value="toracica">Torácica</option>
+            <option value="lombar">Lombar</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Possíveis lesões</h2>
+          <p id="resultCount">0 resultados</p>
+        </div>
+        <div id="lesionGrid" class="lesion-grid" aria-live="polite"></div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Materiais e códigos de referência</h2>
+          <p>Selecione um cartão para destacar os itens relacionados.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lesão</th>
+                <th>Material</th>
+                <th>Código</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody id="materialsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="adminSection" class="admin-section hidden" aria-label="painel administrativo">
+        <div class="section-head">
+          <h2>Painel administrativo</h2>
+          <p>Gerencie lesões diretamente no navegador, sem etapa de login.</p>
+        </div>
+
+        <div id="adminManager" class="admin-card">
+          <div class="admin-card-head">
+            <h3>Cadastro de lesão</h3>
+          </div>
+
+          <form id="lesionForm" class="admin-form-grid">
+            <input id="editingId" type="hidden" />
+
+            <label>
+              Nome da lesão
+              <input id="nomeInput" type="text" required />
+            </label>
+
+            <label>
+              Região
+              <select id="regiaoInput" required>
+                <option value="">Selecione</option>
+                <option value="cervical">Cervical</option>
+                <option value="toracica">Torácica</option>
+                <option value="lombar">Lombar</option>
+              </select>
+            </label>
+
+            <label>
+              Sinais de alerta
+              <textarea id="sinaisInput" rows="2" required></textarea>
+            </label>
+
+            <label>
+              Exame sugerido
+              <textarea id="exameInput" rows="2" required></textarea>
+            </label>
+
+            <label>
+              Técnica possível
+              <textarea id="tecnicaInput" rows="2" required></textarea>
+            </label>
+
+            <label>
+              Observações
+              <textarea id="observacoesInput" rows="2"></textarea>
+            </label>
+
+            <label>
+              Materiais (1 por linha: material | codigo | tipo)
+              <textarea id="materiaisInput" rows="4" placeholder="Parafuso pedicular | OPME-LB-201 | Implante" required></textarea>
+            </label>
+
+            <div class="admin-actions">
+              <button class="admin-btn" type="submit">Salvar lesão</button>
+              <button id="newLesionBtn" class="admin-btn secondary" type="button">Novo</button>
+            </div>
+          </form>
+
+          <p id="lesionFormFeedback" class="feedback"></p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Lesão</th>
+                  <th>Região</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="adminLesionsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      </section>
+    </main>
+
+    <footer>
+      <p>Simple Coluna • Construção incremental do portal clínico-educacional</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

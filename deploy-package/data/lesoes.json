@@ -1,0 +1,86 @@
+[
+  {
+    "id": "hernia-lombar",
+    "nome": "Hérnia de disco lombar com radiculopatia",
+    "regiao": "lombar",
+    "sinais_alerta": "Dor irradiada, déficit motor progressivo, falha de tratamento conservador",
+    "exame_sugerido": "Ressonância magnética da coluna lombar",
+    "tecnica_possivel": "Microdiscectomia (avaliar indicação clínica)",
+    "observacoes": "Correlacionar com distribuição dermatomérica e déficit neurológico.",
+    "materiais": [
+      {
+        "item": "Retrator tubular",
+        "codigo": "OPME-LB-101",
+        "tipo": "Instrumental"
+      },
+      {
+        "item": "Pinça pituitária",
+        "codigo": "OPME-LB-104",
+        "tipo": "Instrumental"
+      }
+    ]
+  },
+  {
+    "id": "estenose-lombar",
+    "nome": "Estenose lombar degenerativa",
+    "regiao": "lombar",
+    "sinais_alerta": "Claudicação neurogênica, limitação funcional importante",
+    "exame_sugerido": "Ressonância magnética e radiografias dinâmicas",
+    "tecnica_possivel": "Descompressão com ou sem artrodese",
+    "observacoes": "Avaliar estabilidade segmentar pré-operatória.",
+    "materiais": [
+      {
+        "item": "Sistema de parafuso pedicular",
+        "codigo": "OPME-LB-201",
+        "tipo": "Implante"
+      },
+      {
+        "item": "Haste de titânio",
+        "codigo": "OPME-LB-204",
+        "tipo": "Implante"
+      }
+    ]
+  },
+  {
+    "id": "mielopatia-cervical",
+    "nome": "Mielopatia cervical espondilótica",
+    "regiao": "cervical",
+    "sinais_alerta": "Alteração de marcha, hiperreflexia, perda de destreza",
+    "exame_sugerido": "Ressonância magnética cervical",
+    "tecnica_possivel": "Descompressão cervical anterior ou posterior",
+    "observacoes": "Sinais longos de trato piramidal aumentam urgência de avaliação.",
+    "materiais": [
+      {
+        "item": "Placa cervical",
+        "codigo": "OPME-CV-305",
+        "tipo": "Implante"
+      },
+      {
+        "item": "Cage cervical",
+        "codigo": "OPME-CV-309",
+        "tipo": "Implante"
+      }
+    ]
+  },
+  {
+    "id": "fratura-toracolombar",
+    "nome": "Fratura toracolombar instável",
+    "regiao": "toracica",
+    "sinais_alerta": "Trauma de alta energia, dor intensa, suspeita de instabilidade",
+    "exame_sugerido": "Tomografia com reconstrução e ressonância quando indicada",
+    "tecnica_possivel": "Fixação posterior segmentar",
+    "observacoes": "Classificar padrão da fratura e risco neurológico.",
+    "materiais": [
+      {
+        "item": "Parafuso pedicular canulado",
+        "codigo": "OPME-TL-401",
+        "tipo": "Implante"
+      },
+      {
+        "item": "Conector transversal",
+        "codigo": "OPME-TL-408",
+        "tipo": "Implante"
+      }
+    ]
+  }
+]
