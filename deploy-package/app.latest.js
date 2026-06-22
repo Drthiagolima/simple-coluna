@@ -1,6 +1,7 @@
 const STORAGE_KEY_LESIONS = "simplecoluna.lesoes.v1";
 const SESSION_KEY_AUTH = "simplecoluna.session.auth.v1";
 const AUTH_LOGIN = "admistracao@simplecoluna.com";
+const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simplecoluna.com"];
 const AUTH_PASSWORD = "simplecoluna";
 
 const FALLBACK_LESIONS = [
@@ -315,7 +316,10 @@ function applyAuthState() {
 }
 
 function isValidLogin(email, password) {
-  return email.trim().toLowerCase() === AUTH_LOGIN && password === AUTH_PASSWORD;
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPassword = password.trim();
+  const allowedEmails = new Set([AUTH_LOGIN, ...AUTH_LOGIN_ALIASES]);
+  return allowedEmails.has(normalizedEmail) && normalizedPassword === AUTH_PASSWORD;
 }
 
 function bindLoginGate() {
