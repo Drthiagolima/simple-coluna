@@ -60,14 +60,158 @@
             <p>Estrutura pronta para crescer com novos casos e implantes.</p>
           </div>
           <div class="landing-stat">
-            <span>Acesso direto</span>
-            <strong>Sem login</strong>
-            <p>Entrada imediata ao conteúdo principal e ao painel interno.</p>
+            <span>Acesso protegido</span>
+            <strong>Login administrativo</strong>
+            <p>Prévia pública com entrada segura para recursos internos da plataforma.</p>
           </div>
         </div>
       </section>
 
+      <section id="loginGate" class="login-gate" aria-label="acesso seguro">
+        <div class="login-info">
+          <p class="eyebrow">Prévia da plataforma</p>
+          <h2>Acesso administrativo com visão resumida para novos usuários.</h2>
+          <p>
+            A Simple Coluna organiza triagem clínica educacional, interpretação estruturada de pedidos,
+            e geração de texto padronizado para discussão técnica entre equipes.
+          </p>
+          <ul>
+            <li>Fluxo por perguntas com classificação operacional em semáforo.</li>
+            <li>Análise de pedido por texto/arquivo com checklist técnico.</li>
+            <li>Painel interno para gestão de lesões e materiais de referência.</li>
+          </ul>
+        </div>
+
+        <form id="loginForm" class="login-card" autocomplete="on">
+          <h3>Entrar na plataforma</h3>
+          <p>Use as credenciais administrativas para liberar o conteúdo completo.</p>
+
+          <label for="loginEmailInput">
+            Login
+            <input
+              id="loginEmailInput"
+              name="email"
+              type="email"
+              placeholder="admistracao@simplecoluna.com"
+              autocomplete="username"
+              required
+            />
+          </label>
+
+          <label for="loginPasswordInput">
+            Senha
+            <input
+              id="loginPasswordInput"
+              name="password"
+              type="password"
+              placeholder="Informe a senha"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+
+          <button class="admin-btn" type="submit">Entrar</button>
+          <p id="loginFeedback" class="feedback" aria-live="polite"></p>
+        </form>
+      </section>
+
       <section id="appArea" class="app-area">
+      <section class="decision-hub" aria-label="fluxos de decisão cirúrgica">
+        <div class="section-head">
+          <h2>Fluxo de decisão cirúrgica</h2>
+          <p>Duas entradas: triagem guiada ou leitura de pedido.</p>
+        </div>
+
+        <div class="decision-switch">
+          <button id="modeQuestionnaireBtn" class="admin-btn" type="button">Opção 1: Triagem por perguntas</button>
+          <button id="modeUploadBtn" class="admin-btn secondary" type="button">Opção 2: Analisar pedido por arquivo</button>
+        </div>
+
+        <div id="questionnairePanel" class="decision-panel">
+          <div class="decision-grid">
+            <label>
+              Tipo de cirurgia
+              <select id="surgeryTypeSelect">
+                <option value="">Selecione</option>
+                <option value="cervical">Artrodese cervical (via anterior/póstero-lateral)</option>
+                <option value="lombar">Artrodese lombar (via anterior/póstero-lateral)</option>
+                <option value="endoscopica">Cirurgia endoscópica de coluna</option>
+              </select>
+            </label>
+
+            <label>
+              Número de níveis
+              <select id="levelsSelect">
+                <option value="1">1 nível</option>
+                <option value="2">2 níveis</option>
+                <option value="3">3 níveis</option>
+              </select>
+            </label>
+
+            <label class="check-row"><input id="redFlagNeuroInput" type="checkbox" /> Déficit neurológico progressivo</label>
+            <label class="check-row"><input id="redFlagCompressionInput" type="checkbox" /> Sinais de compressão medular/cauda equina</label>
+            <label class="check-row"><input id="yellowPainInput" type="checkbox" /> Dor intensa persistente (EVA alta)</label>
+            <label class="check-row"><input id="yellowFailureInput" type="checkbox" /> Falha do tratamento conservador documentada</label>
+            <label class="check-row"><input id="imageProofInput" type="checkbox" /> Comprovação por imagem disponível</label>
+            <label class="check-row"><input id="classHighMorbidityInput" type="checkbox" /> Contexto de alta morbimortalidade / risco clínico elevado</label>
+            <label class="check-row"><input id="classComplexAnatomyInput" type="checkbox" /> Anatomia 3D complexa com risco neurovascular</label>
+            <label class="check-row"><input id="classNeedPrecisionInput" type="checkbox" /> Necessidade de redução/anatômica de alta precisão</label>
+            <label class="check-row"><input id="classConventionalLimitInput" type="checkbox" /> Limitação importante da técnica convencional</label>
+
+            <label>
+              Limitações funcionais (linguagem clínica)
+              <textarea id="functionalLimitationsInput" rows="3" placeholder="Ex.: Limitação dolorosa à flexão de quadril; intolerância à deambulação >100 m por dor."></textarea>
+            </label>
+
+            <label>
+              CID-10 principal
+              <input id="cidInput" type="text" placeholder="Ex.: M50.1" />
+            </label>
+
+            <label>
+              Patologia principal
+              <input id="mainDiagnosisInput" type="text" placeholder="Ex.: Hérnia de disco lombar com radiculopatia" />
+            </label>
+
+            <label>
+              Objetivo tecnológico principal
+              <select id="techGoalSelect">
+                <option value="">Selecione</option>
+                <option value="precisao">Aumentar precisão da execução</option>
+                <option value="planejamento">Aprimorar planejamento pré-operatório</option>
+                <option value="tempo">Reduzir tempo cirúrgico e trauma</option>
+                <option value="formacao">Apoio a formação/simulação da equipe</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="decision-actions">
+            <button id="generateDecisionBtn" class="admin-btn" type="button">Gerar decisão e pedido padronizado</button>
+          </div>
+
+          <div id="decisionResult" class="result-box" aria-live="polite"></div>
+        </div>
+
+        <div id="uploadPanel" class="decision-panel hidden">
+          <div class="decision-grid">
+            <label>
+              Upload do pedido (txt, doc, docx, pdf)
+              <input id="pedidoFileInput" type="file" accept=".txt,.md,.doc,.docx,.pdf" />
+            </label>
+
+            <label>
+              Texto do pedido (opcional para complementar)
+              <textarea id="pedidoTextInput" rows="10" placeholder="Cole o texto integral do pedido cirúrgico aqui."></textarea>
+            </label>
+          </div>
+
+          <div class="decision-actions">
+            <button id="analyzePedidoBtn" class="admin-btn" type="button">Analisar pedido e classificar liberação</button>
+          </div>
+
+          <div id="uploadResult" class="result-box" aria-live="polite"></div>
+        </div>
+      </section>
       <section class="alert-box" aria-label="aviso importante">
         <h2>Aviso importante</h2>
         <p>
