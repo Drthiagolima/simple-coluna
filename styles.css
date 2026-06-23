@@ -114,6 +114,24 @@ h1 {
   gap: 0.6rem;
 }
 
+.focus-toggle {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.focus-toggle-btn {
+  user-select: none;
+}
+
+.focus-toggle:checked ~ .topbar .focus-toggle-btn {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: transparent;
+}
+
 .top-login-link {
   text-decoration: none;
 }
@@ -151,6 +169,14 @@ h1 {
   background: #ffffff;
   border-color: var(--line);
   color: var(--ink);
+}
+
+.focus-toggle:checked ~ main .supplemental-section {
+  display: none;
+}
+
+.focus-toggle:checked ~ main {
+  gap: 0.95rem;
 }
 
 main {

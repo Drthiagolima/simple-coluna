@@ -19,6 +19,7 @@
   <body>
     <div class="bg-shape bg-shape-left" aria-hidden="true"></div>
     <div class="bg-shape bg-shape-right" aria-hidden="true"></div>
+    <input id="focusModeToggle" class="focus-toggle" type="checkbox" aria-label="alternar modo foco" />
 
     <header class="topbar">
       <div class="brand-block">
@@ -27,6 +28,7 @@
         <p class="subtitle">Plataforma educacional para discussão técnica de possíveis lesões cirúrgicas da coluna</p>
       </div>
       <div class="topbar-actions">
+        <label class="admin-btn secondary focus-toggle-btn" for="focusModeToggle">Modo foco</label>
         <a class="admin-btn secondary top-login-link" href="#loginGate">Login seguro</a>
         <button id="adminToggleBtn" class="admin-btn hidden" type="button">Painel Admin</button>
         <div class="chip">Versão 0.2</div>
@@ -103,7 +105,7 @@
         </div>
       </section>
 
-      <section class="landing-trust reveal" aria-label="diretrizes institucionais">
+      <section class="landing-trust reveal supplemental-section" aria-label="diretrizes institucionais">
         <article class="trust-item">
           <span>Uso previsto</span>
           <p>Ambiente educacional para qualificação da discussão técnica.</p>
@@ -118,7 +120,7 @@
         </article>
       </section>
 
-      <section class="landing-value reveal" aria-label="valor operacional">
+      <section class="landing-value reveal supplemental-section" aria-label="valor operacional">
         <div class="section-head landing-value-head">
           <h2>Valor operacional</h2>
           <p>Benefícios percebidos no fluxo de discussão e documentação técnica.</p>
@@ -139,7 +141,7 @@
         </div>
       </section>
 
-      <section class="landing-final-cta reveal" aria-label="chamada final para acesso">
+      <section class="landing-final-cta reveal supplemental-section" aria-label="chamada final para acesso">
         <div>
           <p class="eyebrow">Próximo passo</p>
           <h2>Entre no ambiente interno para utilizar os módulos técnicos do Simple Coluna.</h2>
@@ -147,7 +149,7 @@
         <a class="admin-btn" href="#loginGate">Ir para login seguro</a>
       </section>
 
-      <section class="landing-faq reveal" aria-label="perguntas frequentes institucionais">
+      <section class="landing-faq reveal supplemental-section" aria-label="perguntas frequentes institucionais">
         <div class="section-head">
           <h2>Perguntas frequentes</h2>
           <p>Resumo rápido para novos usuários institucionais.</p>
