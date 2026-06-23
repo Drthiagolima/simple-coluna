@@ -262,7 +262,7 @@ const publicArea = document.querySelector("#publicArea");
 const appArea = document.querySelector("#appArea");
 const focusModeToggle = document.querySelector("#focusModeToggle");
 const journeyAnchorBtn = document.querySelector("#journeyAnchorBtn");
-const topLoginLink = document.querySelector("#topLoginLink");
+const topAuthBtn = document.querySelector("#topAuthBtn");
 const finalLoginCta = document.querySelector("#finalLoginCta");
 const quickAccessLoginBtn = document.querySelector("#quickAccessLoginBtn");
 const accessProgressText = document.querySelector("#accessProgressText");
@@ -346,6 +346,12 @@ function applyAuthState() {
   publicArea?.classList.toggle("hidden", isAuthenticated);
   appArea?.classList.toggle("hidden", !isAuthenticated);
   loginGate?.classList.toggle("hidden", isAuthenticated);
+
+  if (topAuthBtn) {
+    topAuthBtn.textContent = isAuthenticated ? "Sair" : "Login seguro";
+    topAuthBtn.setAttribute("href", isAuthenticated ? "#" : "#loginGate");
+  }
+
   if (adminToggleBtn) {
     adminToggleBtn.disabled = !isAuthenticated;
     adminToggleBtn.classList.toggle("hidden", !isAuthenticated);
@@ -937,7 +943,19 @@ function bindLanding() {
   });
 
   journeyAnchorBtn?.addEventListener("click", () => setAccessProgress(2));
-  topLoginLink?.addEventListener("click", () => setAccessProgress(3));
+  topAuthBtn?.addEventListener("click", (event) => {
+    if (isAuthenticated) {
+      event.preventDefault();
+      isAuthenticated = false;
+      sessionStorage.removeItem(SESSION_KEY_AUTH);
+      setAccessProgress(1);
+      applyAuthState();
+      publicArea?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    setAccessProgress(3);
+  });
   finalLoginCta?.addEventListener("click", () => setAccessProgress(3));
   quickAccessLoginBtn?.addEventListener("click", () => setAccessProgress(3));
 }
