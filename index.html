@@ -269,7 +269,7 @@
               ConstruÃ§Ã£o de pedido assertivo
             </button>
             <button class="internal-tab-btn" data-tab="audit" type="button">SessÃ£o de auditoria</button>
-            <button class="internal-tab-btn" data-tab="ranking" type="button">Ranqueamento dos mÃ©dicos</button>
+            <button class="internal-tab-btn" data-tab="ranking" type="button">Desempenho profissional</button>
           </aside>
 
           <div class="internal-content">
@@ -452,50 +452,23 @@
               </section>
             </section>
 
-            <section id="internalTab-ranking" class="internal-tab-panel" aria-label="ranqueamento de medicos">
-              <section class="ranking-window" aria-label="ranking dos medicos">
+            <section id="internalTab-ranking" class="internal-tab-panel" aria-label="desempenho profissional">
+              <section class="ranking-window" aria-label="desempenho profissional">
                 <div class="section-head">
-                  <h2>Ranqueamento dos mÃ©dicos</h2>
-                  <p>PontuaÃ§Ã£o por adesÃ£o TUSS/OPME e complicaÃ§Ãµes cirÃºrgicas.</p>
+                  <h2>Desempenho profissional</h2>
+                  <p>Ranking de medicos com base nos documentos criados e auditados.</p>
                 </div>
 
                 <div class="ranking-grid">
-                  <div class="admin-card">
-                    <h3>Registrar desfecho pÃ³s-operatÃ³rio</h3>
-                    <form id="outcomeForm" class="admin-form-grid">
-                      <label>
-                        Pedido vinculado
-                        <select id="outcomeRequestSelect">
-                          <option value="">Selecione um pedido registrado</option>
-                        </select>
-                      </label>
-
-                      <label class="check-row"><input id="negTuss30715270" type="checkbox" /> Retirada de material de sÃ­ntese (30715270)</label>
-                      <label class="check-row"><input id="negTuss30715210" type="checkbox" /> Osteomielite (30715210)</label>
-                      <label class="check-row"><input id="negTuss30715199" type="checkbox" /> Laminectomia para abscesso (30715199)</label>
-                      <label class="check-row"><input id="negTuss30715261" type="checkbox" /> Retirada de corpo estranho (30715261)</label>
-                      <label class="check-row"><input id="negTuss31401260" type="checkbox" /> FÃ­stula liquÃ³rica (31401260)</label>
-
-                      <label>
-                        Data de reoperaÃ§Ã£o (se houver)
-                        <input id="reoperationDateInput" type="date" />
-                      </label>
-
-                      <div class="admin-actions">
-                        <button class="admin-btn" type="submit">Salvar desfecho no ranking</button>
-                      </div>
-                    </form>
-                    <p id="outcomeFeedback" class="feedback"></p>
-                  </div>
-
                   <div class="table-wrap">
                     <table>
                       <thead>
                         <tr>
-                          <th>MÃ©dico</th>
+                          <th>Medico</th>
                           <th>CRM</th>
-                          <th>PontuaÃ§Ã£o final</th>
-                          <th>Como alcanÃ§ou os pontos</th>
+                          <th>Documentos</th>
+                          <th>Pontuacao final</th>
+                          <th>Como alcancou os pontos</th>
                         </tr>
                       </thead>
                       <tbody id="doctorRankingTableBody"></tbody>
@@ -592,5 +565,8 @@
     <script src="app.js"></script>
   </body>
 </html>
+
+
+
 
 

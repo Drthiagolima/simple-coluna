@@ -8,6 +8,29 @@ const STORAGE_KEY_FOCUS_MODE = "simplecoluna.landing.focus.v1";
 const STORAGE_KEY_ACCESS_PROGRESS = "simplecoluna.landing.access-progress.v1";
 const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261", "31401260"];
 const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
+const SAMPLE_DOCTOR_RANKING = [
+  {
+    doctorName: "Dra. Carla Fernandes",
+    crm: "527596/RJ",
+    requests: 18,
+    score: 92,
+    scoreDetails: "Exemplo: 18 documentos (criados/auditados), alta completude tecnica e baixa intercorrencia."
+  },
+  {
+    doctorName: "Dr. Renato Almeida",
+    crm: "184233/SP",
+    requests: 12,
+    score: 84,
+    scoreDetails: "Exemplo: boa qualidade documental, com pequenas pendencias de codificacao."
+  },
+  {
+    doctorName: "Dra. Juliana Mota",
+    crm: "90311/MG",
+    requests: 9,
+    score: 76,
+    scoreDetails: "Exemplo: performance regular, com mais necessidade de ajuste em TUSS/OPME."
+  }
+];
 
 const FALLBACK_LESIONS = [
   {
@@ -617,52 +640,54 @@ function evaluateEntryScore(entry) {
 function rankDoctors() {
   const groups = new Map();
 
-  requestHistory.forEach((entry) => {
-    const key = `${entry.doctor.crm}-${entry.doctor.uf}`;
-    if (!groups.has(key)) {
-      groups.set(key, {
-        doctorName: entry.doctor.name,
-        crm: `${entry.doctor.crm}/${entry.doctor.uf}`,
-        requests: 0,
-        scoreSum: 0,
-        complications: 0,
-        earlyReoperations: 0,
-        points: {
-          base: 0,
-          bonusTuss: 0,
-          bonusOpme: 0,
-          bonusDoctor: 0,
-          bonusPatient: 0,
-          penaltyMissingTuss: 0,
-          penaltyOpme: 0,
-          penaltyDoctor: 0,
-          penaltyPatient: 0,
-          penaltyComplications: 0,
-          penaltyEarlyReoperation: 0
-        }
+  requestHistory
+    .filter((entry) => ["criado", "auditado"].includes(entry.documentSource || ""))
+    .forEach((entry) => {
+      const key = `${entry.doctor.crm}-${entry.doctor.uf}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          doctorName: entry.doctor.name,
+          crm: `${entry.doctor.crm}/${entry.doctor.uf}`,
+          requests: 0,
+          scoreSum: 0,
+          complications: 0,
+          earlyReoperations: 0,
+          points: {
+            base: 0,
+            bonusTuss: 0,
+            bonusOpme: 0,
+            bonusDoctor: 0,
+            bonusPatient: 0,
+            penaltyMissingTuss: 0,
+            penaltyOpme: 0,
+            penaltyDoctor: 0,
+            penaltyPatient: 0,
+            penaltyComplications: 0,
+            penaltyEarlyReoperation: 0
+          }
+        });
+      }
+
+      const entryScore = evaluateEntryScore(entry);
+      const doctor = groups.get(key);
+      doctor.requests += 1;
+      doctor.scoreSum += entryScore.score;
+      doctor.complications += entryScore.complications;
+      doctor.earlyReoperations += entryScore.hasEarlyReoperation ? 1 : 0;
+
+      Object.keys(doctor.points).forEach((pointKey) => {
+        doctor.points[pointKey] += entryScore.points[pointKey] || 0;
       });
-    }
-
-    const entryScore = evaluateEntryScore(entry);
-    const doctor = groups.get(key);
-    doctor.requests += 1;
-    doctor.scoreSum += entryScore.score;
-    doctor.complications += entryScore.complications;
-    doctor.earlyReoperations += entryScore.hasEarlyReoperation ? 1 : 0;
-
-    Object.keys(doctor.points).forEach((pointKey) => {
-      doctor.points[pointKey] += entryScore.points[pointKey] || 0;
     });
-  });
 
   return [...groups.values()]
     .map((doctor) => {
       const score = doctor.requests ? Math.round(doctor.scoreSum / doctor.requests) : 0;
       const details = [
         `Base: +${doctor.points.base}`,
-        `CritÃ©rios preenchidos: +${doctor.points.bonusTuss + doctor.points.bonusOpme + doctor.points.bonusDoctor + doctor.points.bonusPatient}`,
-        `PendÃªncias: -${doctor.points.penaltyMissingTuss + doctor.points.penaltyOpme + doctor.points.penaltyDoctor + doctor.points.penaltyPatient}`,
-        `ComplicaÃ§Ãµes (cÃ³digos negativos): -${doctor.points.penaltyComplications}`,
+        `Criterios preenchidos: +${doctor.points.bonusTuss + doctor.points.bonusOpme + doctor.points.bonusDoctor + doctor.points.bonusPatient}`,
+        `Pendencias: -${doctor.points.penaltyMissingTuss + doctor.points.penaltyOpme + doctor.points.penaltyDoctor + doctor.points.penaltyPatient}`,
+        `Complicacoes (codigos negativos): -${doctor.points.penaltyComplications}`,
         `Reabordagem precoce: -${doctor.points.penaltyEarlyReoperation}`
       ];
 
@@ -683,20 +708,18 @@ function renderDoctorRanking() {
   const ranking = rankDoctors();
   doctorRankingTableBody.innerHTML = "";
 
-  ranking.forEach((item) => {
+  const source = ranking.length ? ranking : SAMPLE_DOCTOR_RANKING;
+  source.forEach((item) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(item.doctorName)}</td>
       <td>${escapeHtml(item.crm)}</td>
+      <td>${item.requests || 0}</td>
       <td><strong>${item.score}</strong></td>
       <td>${escapeHtml(item.scoreDetails)}</td>
     `;
     doctorRankingTableBody.appendChild(row);
   });
-
-  if (!ranking.length) {
-    doctorRankingTableBody.innerHTML = "<tr><td colspan='4'>Sem pedidos registrados para ranqueamento.</td></tr>";
-  }
 }
 
 function renderOutcomeRequestOptions() {
@@ -1593,6 +1616,38 @@ async function fetchDoctorProfileFromCfm(crm, uf) {
   return null;
 }
 
+
+function findDoctorProfileFromHistory(crm, uf) {
+  let sourceHistory = requestHistory;
+  if (!Array.isArray(sourceHistory) || !sourceHistory.length) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_REQUEST_HISTORY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      sourceHistory = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      sourceHistory = [];
+    }
+  }
+
+  const matches = sourceHistory.filter(
+    (entry) => onlyDigits(entry.doctor?.crm || "") === crm && (entry.doctor?.uf || "").trim().toUpperCase() === uf
+  );
+  if (!matches.length) {
+    return null;
+  }
+
+  const firstNonEmpty = (values, fallback) => values.find((value) => String(value || "").trim()) || fallback;
+  const names = matches.map((entry) => (entry.doctor?.name || "").trim());
+  const specialties = matches.map((entry) => (entry.doctor?.specialty || "").trim());
+  const statuses = matches.map((entry) => (entry.doctor?.status || "").trim());
+
+  return {
+    name: firstNonEmpty(names, `CRM ${crm}/${uf}`),
+    specialty: firstNonEmpty(specialties, "Nao informado"),
+    status: firstNonEmpty(statuses, "Ativo"),
+    source: "historico-local"
+  };
+}
 function bindDoctorRegistry() {
   const updateFeedback = (message, isError = false) => {
     if (!cfmLookupFeedback) {
@@ -1623,22 +1678,26 @@ function bindDoctorRegistry() {
     }
 
     updateFeedback("Consultando CFM por CRM e UF...");
-    const profile = await fetchDoctorProfileFromCfm(crm, uf);
+    const profileFromCfm = await fetchDoctorProfileFromCfm(crm, uf);
+    const profile = profileFromCfm || findDoctorProfileFromHistory(crm, uf);
     if (!profile) {
       latestDoctorLookup = {
         checked: true,
         verified: false,
-        source: "cfm-indisponivel",
+        source: "cfm-indisponivel-com-fallback",
         checkedAt: new Date().toISOString(),
-        message: "Não foi possível obter os dados do CFM automaticamente."
+        message: "CFM indisponivel no momento. Dados basicos foram preenchidos para continuidade do fluxo."
       };
+      if (doctorNameInput && !doctorNameInput.value.trim()) {
+        doctorNameInput.value = `CRM ${crm}/${uf}`;
+      }
       if (doctorSpecialtyInput) {
-        doctorSpecialtyInput.value = "";
+        doctorSpecialtyInput.value = "Nao informado";
       }
       if (doctorStatusInput) {
-        doctorStatusInput.value = "";
+        doctorStatusInput.value = "Verificacao pendente";
       }
-      updateFeedback("Não foi possível retornar dados do CFM no momento. Tente novamente.", true);
+      updateFeedback(latestDoctorLookup.message, false);
       return;
     }
 
@@ -1648,7 +1707,10 @@ function bindDoctorRegistry() {
       verified: true,
       source: profile.source,
       checkedAt: new Date().toISOString(),
-      message: "Dados do médico preenchidos automaticamente a partir da busca no CFM."
+      message:
+        profile.source === "historico-local"
+          ? "Dados preenchidos pelo historico local de pedidos/documentos."
+          : "Dados do medico preenchidos automaticamente a partir da busca no CFM."
     };
     updateFeedback(latestDoctorLookup.message, false);
   });
@@ -1741,6 +1803,7 @@ function registerUploadRequest(report, text) {
   const payload = {
     id: buildRequestId(),
     createdAt: new Date().toISOString(),
+    documentSource: "auditado",
     doctor: context.doctor,
     patient: context.patient,
     surgeryDate: context.surgeryDate,
@@ -1764,6 +1827,7 @@ function registerQuestionnaireRequest(result) {
   const payload = {
     id: buildRequestId(),
     createdAt: new Date().toISOString(),
+    documentSource: "criado",
     doctor: result.requestContext.doctor,
     patient: result.requestContext.patient,
     surgeryDate: result.requestContext.surgeryDate,
@@ -1991,5 +2055,10 @@ function init() {
 }
 
 init();
+
+
+
+
+
 
 
