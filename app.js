@@ -258,6 +258,7 @@ const loginForm = document.querySelector("#loginForm");
 const loginEmailInput = document.querySelector("#loginEmailInput");
 const loginPasswordInput = document.querySelector("#loginPasswordInput");
 const loginFeedback = document.querySelector("#loginFeedback");
+const publicArea = document.querySelector("#publicArea");
 const appArea = document.querySelector("#appArea");
 const focusModeToggle = document.querySelector("#focusModeToggle");
 const journeyAnchorBtn = document.querySelector("#journeyAnchorBtn");
@@ -342,6 +343,7 @@ let requestHistory = [];
 let latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
 
 function applyAuthState() {
+  publicArea?.classList.toggle("hidden", isAuthenticated);
   appArea?.classList.toggle("hidden", !isAuthenticated);
   loginGate?.classList.toggle("hidden", isAuthenticated);
   if (adminToggleBtn) {
@@ -659,6 +661,10 @@ function filteredLesions() {
 }
 
 function renderCards() {
+  if (!resultCount || !lesionGrid) {
+    return;
+  }
+
   const data = filteredLesions();
   resultCount.textContent = `${data.length} resultado(s)`;
   lesionGrid.innerHTML = "";
@@ -691,6 +697,10 @@ function renderCards() {
 }
 
 function renderMaterials() {
+  if (!materialsTableBody) {
+    return;
+  }
+
   const visibleLesions = filteredLesions();
   const source = activeLesionId
     ? visibleLesions.filter((lesion) => lesion.id === activeLesionId)
@@ -744,6 +754,10 @@ function renderAdminTable() {
 }
 
 function bindFilters() {
+  if (!searchInput || !regionFilter) {
+    return;
+  }
+
   searchInput.addEventListener("input", () => {
     activeLesionId = null;
     renderCards();
@@ -1001,6 +1015,10 @@ function bindFocusMode() {
 }
 
 function setDecisionMode(mode) {
+  if (!questionnairePanel || !uploadPanel || !modeQuestionnaireBtn || !modeUploadBtn) {
+    return;
+  }
+
   const questionnaire = mode === "questionnaire";
   questionnairePanel.classList.toggle("hidden", !questionnaire);
   uploadPanel.classList.toggle("hidden", questionnaire);
@@ -1614,10 +1632,11 @@ async function extractTextFromFile(file) {
 }
 
 function bindDecisionHub() {
-  setDecisionMode("questionnaire");
-
-  modeQuestionnaireBtn.addEventListener("click", () => setDecisionMode("questionnaire"));
-  modeUploadBtn.addEventListener("click", () => setDecisionMode("upload"));
+  if (modeQuestionnaireBtn && modeUploadBtn && questionnairePanel && uploadPanel) {
+    setDecisionMode("questionnaire");
+    modeQuestionnaireBtn.addEventListener("click", () => setDecisionMode("questionnaire"));
+    modeUploadBtn.addEventListener("click", () => setDecisionMode("upload"));
+  }
 
   surgeryTypeSelect.addEventListener("change", () => {
     const isEndoscopic = surgeryTypeSelect.value === "endoscopica";
