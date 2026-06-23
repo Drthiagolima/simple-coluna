@@ -4,7 +4,7 @@ const AUTH_LOGIN = "admistracao@simplecoluna.com";
 const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simplecoluna.com"];
 const AUTH_PASSWORD = "simplecoluna";
 const STORAGE_KEY_REQUEST_HISTORY = "simplecoluna.requests.v1";
-const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261"];
+const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261", "31401260"];
 const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
 
 const FALLBACK_LESIONS = [
@@ -317,6 +317,7 @@ const negTuss30715270 = document.querySelector("#negTuss30715270");
 const negTuss30715210 = document.querySelector("#negTuss30715210");
 const negTuss30715199 = document.querySelector("#negTuss30715199");
 const negTuss30715261 = document.querySelector("#negTuss30715261");
+const negTuss31401260 = document.querySelector("#negTuss31401260");
 const outcomeFeedback = document.querySelector("#outcomeFeedback");
 const doctorRankingTableBody = document.querySelector("#doctorRankingTableBody");
 
@@ -502,7 +503,7 @@ function registerRequestEntry(payload) {
 
   if (previousSamePatient) {
     const interval = daysBetween(previousSamePatient.surgeryDate, payload.surgeryDate);
-    if (interval !== null && interval < 90) {
+    if (interval !== null && interval > 10) {
       payload.outcomes = {
         ...(payload.outcomes || {}),
         reoperationUnder90: true,
@@ -1422,10 +1423,11 @@ function bindRankingWindow() {
     if (negTuss30715210?.checked) selectedCodes.push("30715210");
     if (negTuss30715199?.checked) selectedCodes.push("30715199");
     if (negTuss30715261?.checked) selectedCodes.push("30715261");
+    if (negTuss31401260?.checked) selectedCodes.push("31401260");
 
     const reoperationDate = toIsoDate(reoperationDateInput?.value || "");
     const interval = reoperationDate ? daysBetween(entry.surgeryDate, reoperationDate) : null;
-    const reoperationUnder90 = interval !== null && interval < 90;
+    const reoperationUnder90 = interval !== null && interval > 10;
 
     entry.outcomes = {
       negativeCodes: selectedCodes,
@@ -1437,7 +1439,7 @@ function bindRankingWindow() {
     renderDoctorRanking();
 
     outcomeFeedback.textContent = reoperationUnder90
-      ? "Desfecho salvo com alerta de reoperação em intervalo inferior a 90 dias."
+      ? "Desfecho salvo com alerta de reoperação em intervalo superior a 10 dias."
       : "Desfecho salvo no ranking médico.";
     outcomeFeedback.classList.remove("error");
   });
