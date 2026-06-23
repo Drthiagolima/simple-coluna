@@ -4,6 +4,7 @@ const AUTH_LOGIN = "admistracao@simplecoluna.com";
 const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simplecoluna.com"];
 const AUTH_PASSWORD = "simplecoluna";
 const STORAGE_KEY_REQUEST_HISTORY = "simplecoluna.requests.v1";
+const STORAGE_KEY_FOCUS_MODE = "simplecoluna.landing.focus.v1";
 const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261", "31401260"];
 const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
 
@@ -257,6 +258,7 @@ const loginEmailInput = document.querySelector("#loginEmailInput");
 const loginPasswordInput = document.querySelector("#loginPasswordInput");
 const loginFeedback = document.querySelector("#loginFeedback");
 const appArea = document.querySelector("#appArea");
+const focusModeToggle = document.querySelector("#focusModeToggle");
 
 const lesionForm = document.querySelector("#lesionForm");
 const editingIdInput = document.querySelector("#editingId");
@@ -905,6 +907,26 @@ function bindLanding() {
       return;
     }
     loginGate?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function bindFocusMode() {
+  if (!focusModeToggle) {
+    return;
+  }
+
+  try {
+    focusModeToggle.checked = localStorage.getItem(STORAGE_KEY_FOCUS_MODE) === "1";
+  } catch {
+    focusModeToggle.checked = false;
+  }
+
+  focusModeToggle.addEventListener("change", () => {
+    try {
+      localStorage.setItem(STORAGE_KEY_FOCUS_MODE, focusModeToggle.checked ? "1" : "0");
+    } catch {
+      // Ignora falhas de persistencia local sem interromper a interface.
+    }
   });
 }
 
@@ -1596,6 +1618,7 @@ async function loadData() {
 }
 
 function init() {
+  bindFocusMode();
   loadRequestHistory();
   renderOutcomeRequestOptions();
   renderDoctorRanking();

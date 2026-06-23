@@ -114,6 +114,20 @@ h1 {
   gap: 0.6rem;
 }
 
+.focus-indicator {
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(31, 122, 114, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(31, 122, 114, 0.28);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .focus-toggle {
   position: absolute;
   inline-size: 1px;
@@ -130,6 +144,10 @@ h1 {
   background: var(--accent);
   color: #ffffff;
   border-color: transparent;
+}
+
+.focus-toggle:checked ~ .topbar .focus-indicator {
+  display: inline-flex;
 }
 
 .top-login-link {
