@@ -3,6 +3,9 @@ const SESSION_KEY_AUTH = "simplecoluna.session.auth.v1";
 const AUTH_LOGIN = "admistracao@simplecoluna.com";
 const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simplecoluna.com"];
 const AUTH_PASSWORD = "simplecoluna";
+const STORAGE_KEY_REQUEST_HISTORY = "simplecoluna.requests.v1";
+const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261"];
+const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
 
 const FALLBACK_LESIONS = [
   {
@@ -297,11 +300,33 @@ const pedidoTextInput = document.querySelector("#pedidoTextInput");
 const analyzePedidoBtn = document.querySelector("#analyzePedidoBtn");
 const uploadResult = document.querySelector("#uploadResult");
 
+const doctorNameInput = document.querySelector("#doctorNameInput");
+const doctorCrmInput = document.querySelector("#doctorCrmInput");
+const doctorUfSelect = document.querySelector("#doctorUfSelect");
+const patientNameInput = document.querySelector("#patientNameInput");
+const patientDocumentInput = document.querySelector("#patientDocumentInput");
+const surgeryDateInput = document.querySelector("#surgeryDateInput");
+const checkCfmBtn = document.querySelector("#checkCfmBtn");
+const openCfmBtn = document.querySelector("#openCfmBtn");
+const cfmLookupFeedback = document.querySelector("#cfmLookupFeedback");
+
+const outcomeForm = document.querySelector("#outcomeForm");
+const outcomeRequestSelect = document.querySelector("#outcomeRequestSelect");
+const reoperationDateInput = document.querySelector("#reoperationDateInput");
+const negTuss30715270 = document.querySelector("#negTuss30715270");
+const negTuss30715210 = document.querySelector("#negTuss30715210");
+const negTuss30715199 = document.querySelector("#negTuss30715199");
+const negTuss30715261 = document.querySelector("#negTuss30715261");
+const outcomeFeedback = document.querySelector("#outcomeFeedback");
+const doctorRankingTableBody = document.querySelector("#doctorRankingTableBody");
+
 let activeLesionId = null;
 let uploadedPedidoText = "";
 let latestRequestTemplate = "";
 let latestRequestFileName = "solicitacao-cirurgia.txt";
 let isAuthenticated = false;
+let requestHistory = [];
+let latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
 
 function applyAuthState() {
   appArea?.classList.toggle("hidden", !isAuthenticated);
@@ -378,6 +403,212 @@ function toFileSafe(value) {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
+}
+
+function onlyDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function toIsoDate(value) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function daysBetween(isoA, isoB) {
+  const a = new Date(isoA);
+  const b = new Date(isoB);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    return null;
+  }
+  return Math.abs(Math.round((b.getTime() - a.getTime()) / 86400000));
+}
+
+function buildCfmLookupUrl(crm, uf) {
+  const params = new URLSearchParams({ crm, uf });
+  return `${CFM_SEARCH_BASE_URL}?${params.toString()}`;
+}
+
+function getRequestContext() {
+  const doctorName = (doctorNameInput?.value || "").trim();
+  const doctorCrm = onlyDigits(doctorCrmInput?.value || "");
+  const doctorUf = (doctorUfSelect?.value || "").trim().toUpperCase();
+  const patientName = (patientNameInput?.value || "").trim();
+  const patientDocument = (patientDocumentInput?.value || "").trim();
+  const surgeryDate = toIsoDate(surgeryDateInput?.value || "");
+
+  return {
+    doctor: {
+      name: doctorName,
+      crm: doctorCrm,
+      uf: doctorUf,
+      cfm: { ...latestDoctorLookup }
+    },
+    patient: {
+      name: patientName,
+      document: patientDocument
+    },
+    surgeryDate
+  };
+}
+
+function validateRequestContext() {
+  const context = getRequestContext();
+  const missing = [];
+  if (!context.doctor.name) missing.push("nome do médico");
+  if (!context.doctor.crm) missing.push("CRM");
+  if (!context.doctor.uf) missing.push("UF do CRM");
+  if (!context.patient.name) missing.push("nome do paciente");
+  if (!context.patient.document) missing.push("documento do paciente");
+  if (!context.surgeryDate) missing.push("data da cirurgia");
+
+  if (missing.length) {
+    return {
+      ok: false,
+      message: `Preencha: ${missing.join(", ")}.`
+    };
+  }
+
+  return { ok: true, context };
+}
+
+function persistRequestHistory() {
+  localStorage.setItem(STORAGE_KEY_REQUEST_HISTORY, JSON.stringify(requestHistory));
+}
+
+function loadRequestHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_REQUEST_HISTORY);
+    requestHistory = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(requestHistory)) {
+      requestHistory = [];
+    }
+  } catch {
+    requestHistory = [];
+  }
+}
+
+function registerRequestEntry(payload) {
+  requestHistory.unshift(payload);
+  persistRequestHistory();
+  renderOutcomeRequestOptions();
+  renderDoctorRanking();
+}
+
+function buildRequestId() {
+  return `PED-${Date.now()}`;
+}
+
+function calculateRequestMetrics(entry) {
+  const expectedTuss = entry.expectedTussCodes?.length || 4;
+  const matchedTuss = (entry.tussCodes || []).filter((code) => (entry.expectedTussCodes || []).includes(code)).length;
+  const tussAdherence = expectedTuss ? Math.min(matchedTuss / expectedTuss, 1) : 0;
+
+  const expectedOpme = entry.expectedOpmeCount || 1;
+  const opmeCount = entry.opmeItems?.length || 0;
+  const opmeAdherence = expectedOpme ? Math.min(opmeCount / expectedOpme, 1) : 0;
+
+  const negativeCodes = entry.outcomes?.negativeCodes || [];
+  const complications = negativeCodes.filter((code) => NEGATIVE_TUSS_CODES.includes(code)).length;
+  const reoperationUnder90 = entry.outcomes?.reoperationUnder90 ? 1 : 0;
+
+  return { tussAdherence, opmeAdherence, complications, reoperationUnder90 };
+}
+
+function rankDoctors() {
+  const groups = new Map();
+
+  requestHistory.forEach((entry) => {
+    const key = `${entry.doctor.crm}-${entry.doctor.uf}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        doctorName: entry.doctor.name,
+        crm: `${entry.doctor.crm}/${entry.doctor.uf}`,
+        requests: 0,
+        tussSum: 0,
+        opmeSum: 0,
+        complications: 0,
+        reoperationUnder90: 0
+      });
+    }
+
+    const metrics = calculateRequestMetrics(entry);
+    const doctor = groups.get(key);
+    doctor.requests += 1;
+    doctor.tussSum += metrics.tussAdherence;
+    doctor.opmeSum += metrics.opmeAdherence;
+    doctor.complications += metrics.complications;
+    doctor.reoperationUnder90 += metrics.reoperationUnder90;
+  });
+
+  return [...groups.values()]
+    .map((doctor) => {
+      const avgTuss = doctor.requests ? doctor.tussSum / doctor.requests : 0;
+      const avgOpme = doctor.requests ? doctor.opmeSum / doctor.requests : 0;
+      const scoreRaw = avgTuss * 50 + avgOpme * 25 - doctor.complications * 8 - doctor.reoperationUnder90 * 20;
+      const score = Math.max(0, Math.min(100, Math.round(scoreRaw)));
+
+      return {
+        ...doctor,
+        avgTuss,
+        avgOpme,
+        score
+      };
+    })
+    .sort((a, b) => b.score - a.score || b.requests - a.requests);
+}
+
+function renderDoctorRanking() {
+  if (!doctorRankingTableBody) {
+    return;
+  }
+
+  const ranking = rankDoctors();
+  doctorRankingTableBody.innerHTML = "";
+
+  ranking.forEach((item) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${escapeHtml(item.doctorName)}</td>
+      <td>${escapeHtml(item.crm)}</td>
+      <td>${item.requests}</td>
+      <td>${Math.round(item.avgTuss * 100)}%</td>
+      <td>${Math.round(item.avgOpme * 100)}%</td>
+      <td>${item.complications}</td>
+      <td>${item.reoperationUnder90}</td>
+      <td><strong>${item.score}</strong></td>
+    `;
+    doctorRankingTableBody.appendChild(row);
+  });
+
+  if (!ranking.length) {
+    doctorRankingTableBody.innerHTML = "<tr><td colspan='8'>Sem pedidos registrados para ranqueamento.</td></tr>";
+  }
+}
+
+function renderOutcomeRequestOptions() {
+  if (!outcomeRequestSelect) {
+    return;
+  }
+
+  const current = outcomeRequestSelect.value;
+  outcomeRequestSelect.innerHTML = "<option value=''>Selecione um pedido registrado</option>";
+
+  requestHistory.forEach((entry) => {
+    const option = document.createElement("option");
+    option.value = entry.id;
+    option.textContent = `${entry.id} - ${entry.doctor.name} / ${entry.patient.name} (${entry.surgeryDate})`;
+    outcomeRequestSelect.appendChild(option);
+  });
+
+  if (current && requestHistory.some((entry) => entry.id === current)) {
+    outcomeRequestSelect.value = current;
+  }
 }
 
 function filteredLesions() {
@@ -775,7 +1006,7 @@ function buildSurgeryRequestTemplate(payload) {
 
   const opmeList = payload.opme.map((item) => `• ${item}`).join("\n");
 
-  return `SOLICITACAO DE CIRURGIA\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\n• ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\n• ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\n• Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
+  return `SOLICITACAO DE CIRURGIA\nMEDICO SOLICITANTE: ${payload.doctorName} | CRM ${payload.doctorCrm}/${payload.doctorUf}\nPACIENTE: ${payload.patientName} | DOCUMENTO: ${payload.patientDocument}\nDATA DA CIRURGIA: ${payload.surgeryDate}\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\n• ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\n• ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\n• Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
 }
 
 function renderQuestionnaireResult(result) {
@@ -826,6 +1057,13 @@ function validateQuestionnaireInputs() {
     return null;
   }
 
+  const contextCheck = validateRequestContext();
+  if (!contextCheck.ok) {
+    decisionResult.innerHTML = `<p>${escapeHtml(contextCheck.message)}</p>`;
+    return null;
+  }
+  const requestContext = contextCheck.context;
+
   const protocol = SURGERY_PROTOCOLS[surgeryTypeSelect.value];
   const levels = protocol === SURGERY_PROTOCOLS.endoscopica ? 1 : Number(levelsSelect.value || "1");
   const cid = (cidInput.value || protocol.defaultCid).trim();
@@ -868,6 +1106,12 @@ function validateQuestionnaireInputs() {
   }`;
 
   const template = buildSurgeryRequestTemplate({
+    doctorName: requestContext.doctor.name,
+    doctorCrm: requestContext.doctor.crm,
+    doctorUf: requestContext.doctor.uf,
+    patientName: requestContext.patient.name,
+    patientDocument: requestContext.patient.document,
+    surgeryDate: requestContext.surgeryDate,
     cid,
     procedure: protocol.procedure,
     patientContext,
@@ -876,7 +1120,17 @@ function validateQuestionnaireInputs() {
     opme
   });
 
-  return { protocol, levels, cid, urgency, tuss, opme, technologyRecommendations, template };
+  return {
+    protocol,
+    levels,
+    cid,
+    urgency,
+    tuss,
+    opme,
+    technologyRecommendations,
+    template,
+    requestContext
+  };
 }
 
 function extractPossibleCid(text) {
@@ -1019,6 +1273,159 @@ function renderUploadResult(report) {
   `;
 }
 
+function bindDoctorRegistry() {
+  const updateFeedback = (message, isError = false) => {
+    if (!cfmLookupFeedback) {
+      return;
+    }
+    cfmLookupFeedback.textContent = message;
+    cfmLookupFeedback.classList.toggle("error", isError);
+  };
+
+  checkCfmBtn?.addEventListener("click", async () => {
+    const crm = onlyDigits(doctorCrmInput?.value || "");
+    const uf = (doctorUfSelect?.value || "").trim().toUpperCase();
+    if (!crm || !uf) {
+      updateFeedback("Informe CRM e UF para consultar no CFM.", true);
+      return;
+    }
+
+    const lookupUrl = buildCfmLookupUrl(crm, uf);
+    latestDoctorLookup = {
+      checked: true,
+      verified: false,
+      source: "cfm-link",
+      checkedAt: new Date().toISOString(),
+      message: "Consulta CFM preparada. Clique em 'Abrir busca CFM' para validação oficial."
+    };
+
+    try {
+      await fetch(lookupUrl, { method: "GET", mode: "no-cors" });
+      latestDoctorLookup.verified = true;
+      latestDoctorLookup.source = "cfm-fetch";
+      latestDoctorLookup.message = "Consulta ao CFM disparada. Confirme os dados no portal oficial.";
+      updateFeedback(latestDoctorLookup.message);
+    } catch {
+      updateFeedback(
+        "O CFM pode bloquear consulta direta no navegador. Use 'Abrir busca CFM' para validação oficial.",
+        false
+      );
+    }
+  });
+
+  openCfmBtn?.addEventListener("click", () => {
+    const crm = onlyDigits(doctorCrmInput?.value || "");
+    const uf = (doctorUfSelect?.value || "").trim().toUpperCase();
+    if (!crm || !uf) {
+      updateFeedback("Informe CRM e UF para abrir a busca no CFM.", true);
+      return;
+    }
+
+    const lookupUrl = buildCfmLookupUrl(crm, uf);
+    window.open(lookupUrl, "_blank", "noopener,noreferrer");
+    latestDoctorLookup = {
+      checked: true,
+      verified: latestDoctorLookup.verified,
+      source: "cfm-link",
+      checkedAt: new Date().toISOString(),
+      message: "Busca do CFM aberta em nova aba."
+    };
+    updateFeedback("Busca do CFM aberta em nova aba.");
+  });
+}
+
+function registerQuestionnaireRequest(result) {
+  const expectedTussCodes = result.protocol.tuss.map((item) => item.codigo);
+  const payload = {
+    id: buildRequestId(),
+    createdAt: new Date().toISOString(),
+    doctor: result.requestContext.doctor,
+    patient: result.requestContext.patient,
+    surgeryDate: result.requestContext.surgeryDate,
+    protocolLabel: result.protocol.label,
+    tussCodes: result.tuss.map((item) => item.code),
+    expectedTussCodes,
+    opmeItems: result.opme,
+    expectedOpmeCount: result.opme.length,
+    outcomes: {
+      negativeCodes: [],
+      reoperationUnder90: false,
+      reoperationDate: ""
+    }
+  };
+  registerRequestEntry(payload);
+}
+
+function registerUploadRequest(report, text) {
+  const contextCheck = validateRequestContext();
+  if (!contextCheck.ok) {
+    uploadResult.innerHTML = `<p>${escapeHtml(contextCheck.message)}</p>`;
+    return false;
+  }
+
+  const context = contextCheck.context;
+  const protocol = detectProtocolByText(text);
+  const expectedTussCodes = protocol ? protocol.tuss.map((item) => item.codigo) : [...ALL_VALID_TUSS].slice(0, 4);
+
+  const payload = {
+    id: buildRequestId(),
+    createdAt: new Date().toISOString(),
+    doctor: context.doctor,
+    patient: context.patient,
+    surgeryDate: context.surgeryDate,
+    protocolLabel: report.protocolLabel,
+    tussCodes: report.tussFound,
+    expectedTussCodes,
+    opmeItems: report.checks.find((item) => item.label === "OPME por item")?.ok ? ["OPME informado"] : [],
+    expectedOpmeCount: 1,
+    outcomes: {
+      negativeCodes: [],
+      reoperationUnder90: false,
+      reoperationDate: ""
+    }
+  };
+  registerRequestEntry(payload);
+  return true;
+}
+
+function bindRankingWindow() {
+  outcomeForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const requestId = outcomeRequestSelect?.value || "";
+    const entry = requestHistory.find((item) => item.id === requestId);
+    if (!entry) {
+      outcomeFeedback.textContent = "Selecione um pedido válido para registrar o desfecho.";
+      outcomeFeedback.classList.add("error");
+      return;
+    }
+
+    const selectedCodes = [];
+    if (negTuss30715270?.checked) selectedCodes.push("30715270");
+    if (negTuss30715210?.checked) selectedCodes.push("30715210");
+    if (negTuss30715199?.checked) selectedCodes.push("30715199");
+    if (negTuss30715261?.checked) selectedCodes.push("30715261");
+
+    const reoperationDate = toIsoDate(reoperationDateInput?.value || "");
+    const interval = reoperationDate ? daysBetween(entry.surgeryDate, reoperationDate) : null;
+    const reoperationUnder90 = interval !== null && interval < 90;
+
+    entry.outcomes = {
+      negativeCodes: selectedCodes,
+      reoperationDate,
+      reoperationUnder90
+    };
+
+    persistRequestHistory();
+    renderDoctorRanking();
+
+    outcomeFeedback.textContent = reoperationUnder90
+      ? "Desfecho salvo com alerta de reoperação em intervalo inferior a 90 dias."
+      : "Desfecho salvo no ranking médico.";
+    outcomeFeedback.classList.remove("error");
+  });
+}
+
 async function extractTextFromFile(file) {
   if (!file) {
     return "";
@@ -1058,6 +1465,7 @@ function bindDecisionHub() {
     if (!result) {
       return;
     }
+    registerQuestionnaireRequest(result);
     renderQuestionnaireResult(result);
   });
 
@@ -1086,6 +1494,10 @@ function bindDecisionHub() {
     }
 
     const report = evaluatePedido(combined);
+    const registered = registerUploadRequest(report, combined);
+    if (!registered) {
+      return;
+    }
     renderUploadResult(report);
   });
 
@@ -1167,11 +1579,16 @@ async function loadData() {
 }
 
 function init() {
+  loadRequestHistory();
+  renderOutcomeRequestOptions();
+  renderDoctorRanking();
   bindLoginGate();
   bindLanding();
   bindFilters();
   bindAdmin();
+  bindDoctorRegistry();
   bindDecisionHub();
+  bindRankingWindow();
   loadData();
 }
 

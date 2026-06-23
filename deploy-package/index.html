@@ -122,6 +122,61 @@
           <p>Duas entradas: triagem guiada ou leitura de pedido.</p>
         </div>
 
+        <div class="request-registry">
+          <div class="section-head">
+            <h3>Cadastro de médico e paciente do pedido</h3>
+            <p>Vincula o pedido cirúrgico ao médico e ao paciente.</p>
+          </div>
+          <div class="decision-grid">
+            <label>
+              Nome do médico
+              <input id="doctorNameInput" type="text" placeholder="Ex.: Dr. Thiago Lima" />
+            </label>
+
+            <label>
+              CRM
+              <input id="doctorCrmInput" type="text" placeholder="Ex.: 123456" />
+            </label>
+
+            <label>
+              UF do CRM
+              <select id="doctorUfSelect">
+                <option value="">Selecione</option>
+                <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+              </select>
+            </label>
+
+            <label>
+              Nome do paciente
+              <input id="patientNameInput" type="text" placeholder="Ex.: João da Silva" />
+            </label>
+
+            <label>
+              Documento do paciente
+              <input id="patientDocumentInput" type="text" placeholder="Ex.: CPF / Prontuário" />
+            </label>
+
+            <label>
+              Data da cirurgia
+              <input id="surgeryDateInput" type="date" />
+            </label>
+          </div>
+
+          <div class="decision-actions">
+            <button id="checkCfmBtn" class="admin-btn secondary" type="button">Buscar CRM no CFM</button>
+            <button id="openCfmBtn" class="admin-btn secondary" type="button">Abrir busca CFM</button>
+          </div>
+          <p id="cfmLookupFeedback" class="feedback"></p>
+        </div>
+
         <div class="decision-switch">
           <button id="modeQuestionnaireBtn" class="admin-btn" type="button">Opção 1: Triagem por perguntas</button>
           <button id="modeUploadBtn" class="admin-btn secondary" type="button">Opção 2: Analisar pedido por arquivo</button>
@@ -210,6 +265,60 @@
           </div>
 
           <div id="uploadResult" class="result-box" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="ranking-window" aria-label="ranking dos medicos">
+        <div class="section-head">
+          <h2>Janela de ranking dos médicos</h2>
+          <p>Pontuação por adesão TUSS/OPME e complicações cirúrgicas.</p>
+        </div>
+
+        <div class="ranking-grid">
+          <div class="admin-card">
+            <h3>Registrar desfecho pós-operatório</h3>
+            <form id="outcomeForm" class="admin-form-grid">
+              <label>
+                Pedido vinculado
+                <select id="outcomeRequestSelect">
+                  <option value="">Selecione um pedido registrado</option>
+                </select>
+              </label>
+
+              <label class="check-row"><input id="negTuss30715270" type="checkbox" /> Retirada de material de síntese (30715270)</label>
+              <label class="check-row"><input id="negTuss30715210" type="checkbox" /> Osteomielite (30715210)</label>
+              <label class="check-row"><input id="negTuss30715199" type="checkbox" /> Laminectomia para abscesso (30715199)</label>
+              <label class="check-row"><input id="negTuss30715261" type="checkbox" /> Retirada de corpo estranho (30715261)</label>
+
+              <label>
+                Data de reoperação (se houver)
+                <input id="reoperationDateInput" type="date" />
+              </label>
+
+              <div class="admin-actions">
+                <button class="admin-btn" type="submit">Salvar desfecho no ranking</button>
+              </div>
+            </form>
+            <p id="outcomeFeedback" class="feedback"></p>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Médico</th>
+                  <th>CRM</th>
+                  <th>Pedidos</th>
+                  <th>Adesão TUSS</th>
+                  <th>Adesão OPME</th>
+                  <th>Complicações</th>
+                  <th>Reop. &lt; 90 dias</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody id="doctorRankingTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
       <section class="alert-box" aria-label="aviso importante">
