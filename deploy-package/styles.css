@@ -82,7 +82,7 @@ footer {
 
 h1,
 h2 {
-  font-family: "Merriweather", serif;
+  font-family: "Cormorant Garamond", serif;
   margin: 0;
 }
 
@@ -95,6 +95,7 @@ h1 {
   max-width: 52ch;
   color: var(--ink-soft);
   margin: 0.6rem 0 0;
+  letter-spacing: 0.01em;
 }
 
 .chip {
@@ -263,6 +264,21 @@ main {
   border-radius: 16px;
   padding: 1rem;
   transition: transform 200ms ease, border-color 200ms ease;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeUp 420ms ease forwards;
+}
+
+.journey-step:nth-child(1) {
+  animation-delay: 260ms;
+}
+
+.journey-step:nth-child(2) {
+  animation-delay: 320ms;
+}
+
+.journey-step:nth-child(3) {
+  animation-delay: 380ms;
 }
 
 .journey-step:hover {
@@ -281,7 +297,7 @@ main {
 
 .journey-step h3 {
   margin: 0 0 0.45rem;
-  font-family: "Merriweather", serif;
+  font-family: "Cormorant Garamond", serif;
   font-size: 1.02rem;
 }
 
@@ -312,6 +328,35 @@ main {
   margin: 0;
   color: var(--ink-soft);
   font-size: 0.93rem;
+}
+
+.landing-trust {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.trust-item {
+  background: linear-gradient(165deg, rgba(251, 247, 241, 0.9), rgba(239, 229, 216, 0.72));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+}
+
+.trust-item span {
+  display: block;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.trust-item p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
 }
 
 .login-gate {
@@ -702,6 +747,10 @@ textarea {
   animation-delay: 280ms;
 }
 
+.landing-trust.reveal {
+  animation-delay: 220ms;
+}
+
 @keyframes fadeUp {
   to {
     opacity: 1;
@@ -755,6 +804,10 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .landing-trust {
+    grid-template-columns: 1fr;
+  }
+
   .login-gate {
     grid-template-columns: 1fr;
   }
@@ -791,5 +844,11 @@ footer {
   .journey-step,
   .admin-btn {
     transition: none;
+  }
+
+  .journey-step {
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 }
