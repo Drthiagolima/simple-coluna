@@ -320,7 +320,8 @@ const patientNameInput = document.querySelector("#patientNameInput");
 const patientDocumentInput = document.querySelector("#patientDocumentInput");
 const surgeryDateInput = document.querySelector("#surgeryDateInput");
 const checkCfmBtn = document.querySelector("#checkCfmBtn");
-const openCfmBtn = document.querySelector("#openCfmBtn");
+const doctorSpecialtyInput = document.querySelector("#doctorSpecialtyInput");
+const doctorStatusInput = document.querySelector("#doctorStatusInput");
 const cfmLookupFeedback = document.querySelector("#cfmLookupFeedback");
 
 const outcomeForm = document.querySelector("#outcomeForm");
@@ -462,6 +463,8 @@ function getRequestContext() {
   const doctorName = (doctorNameInput?.value || "").trim();
   const doctorCrm = onlyDigits(doctorCrmInput?.value || "");
   const doctorUf = (doctorUfSelect?.value || "").trim().toUpperCase();
+  const doctorSpecialty = (doctorSpecialtyInput?.value || "").trim();
+  const doctorStatus = (doctorStatusInput?.value || "").trim();
   const patientName = (patientNameInput?.value || "").trim();
   const patientDocument = (patientDocumentInput?.value || "").trim();
   const surgeryDate = toIsoDate(surgeryDateInput?.value || "");
@@ -471,6 +474,8 @@ function getRequestContext() {
       name: doctorName,
       crm: doctorCrm,
       uf: doctorUf,
+      specialty: doctorSpecialty,
+      status: doctorStatus,
       cfm: { ...latestDoctorLookup }
     },
     patient: {
@@ -1477,6 +1482,56 @@ function bindInternalTabs() {
 }
 
 function bindDoctorRegistry() {
+  const localDirectory = {
+    "123456-SP": {
+      name: "Dr. Thiago Lima",
+      specialty: "Ortopedia e Traumatologia",
+      status: "Ativo"
+    }
+  };
+
+  const profileKey = (crm, uf) => `${onlyDigits(crm)}-${(uf || "").trim().toUpperCase()}`;
+
+  const applyDoctorProfile = (profile) => {
+    if (profile.name && doctorNameInput) {
+      doctorNameInput.value = profile.name;
+    }
+    if (doctorSpecialtyInput) {
+      doctorSpecialtyInput.value = profile.specialty || "Não informado";
+    }
+    if (doctorStatusInput) {
+      doctorStatusInput.value = profile.status || "Não informado";
+    }
+  };
+
+  const findDoctorProfile = (crm, uf) => {
+    const key = profileKey(crm, uf);
+    if (!key || key === "-") {
+      return null;
+    }
+
+    if (localDirectory[key]) {
+      return { ...localDirectory[key], source: "cadastro-local" };
+    }
+
+    const previous = requestHistory.find(
+      (entry) =>
+        profileKey(entry.doctor?.crm || "", entry.doctor?.uf || "") === key &&
+        (entry.doctor?.name || "").trim()
+    );
+
+    if (!previous) {
+      return null;
+    }
+
+    return {
+      name: previous.doctor.name,
+      specialty: previous.doctor.specialty || "Não informado",
+      status: previous.doctor.status || "Ativo",
+      source: "historico-interno"
+    };
+  };
+
   const updateFeedback = (message, isError = false) => {
     if (!cfmLookupFeedback) {
       return;
@@ -1489,84 +1544,122 @@ function bindDoctorRegistry() {
     const crm = onlyDigits(doctorCrmInput?.value || "");
     const uf = (doctorUfSelect?.value || "").trim().toUpperCase();
     if (!crm || !uf) {
-      updateFeedback("Informe CRM e UF para consultar no CFM.", true);
+      updateFeedback("Informe CRM e UF para buscar os dados do médico.", true);
       return;
     }
 
-    const lookupUrl = buildCfmLookupUrl(crm, uf);
+    const profile = findDoctorProfile(crm, uf);
+    if (!profile) {
+      latestDoctorLookup = {
+        checked: true,
+        verified: false,
+        source: "sem-correspondencia-local",
+        checkedAt: new Date().toISOString(),
+        message: "CRM não localizado no histórico local. Preencha nome/especialidade manualmente."
+      };
+      if (doctorSpecialtyInput) {
+        doctorSpecialtyInput.value = "";
+      }
+      if (doctorStatusInput) {
+        doctorStatusInput.value = "";
+      }
+      updateFeedback(latestDoctorLookup.message, false);
+      return;
+    }
+
+    applyDoctorProfile(profile);
     latestDoctorLookup = {
       checked: true,
-      verified: false,
-      source: "cfm-link",
+      verified: true,
+      source: profile.source,
       checkedAt: new Date().toISOString(),
-      message: "Consulta CFM preparada. Clique em 'Abrir busca CFM' para validação oficial."
+      message: "Dados do médico preenchidos automaticamente na página."
     };
-
-    try {
-      await fetch(lookupUrl, { method: "GET", mode: "no-cors" });
-      latestDoctorLookup.verified = true;
-      latestDoctorLookup.source = "cfm-fetch";
-      latestDoctorLookup.message = "Consulta ao CFM disparada. Confirme os dados no portal oficial.";
-      updateFeedback(latestDoctorLookup.message);
-    } catch {
-      updateFeedback(
-        "O CFM pode bloquear consulta direta no navegador. Use 'Abrir busca CFM' para validação oficial.",
-        false
-      );
-    }
+    updateFeedback(latestDoctorLookup.message);
   });
 
-  openCfmBtn?.addEventListener("click", () => {
-    const crm = onlyDigits(doctorCrmInput?.value || "");
-    const uf = (doctorUfSelect?.value || "").trim().toUpperCase();
-    if (!crm || !uf) {
-      updateFeedback("Informe CRM e UF para abrir a busca no CFM.", true);
-      return;
-    }
+  doctorCrmInput?.addEventListener("input", () => {
+    latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
+  });
 
-    const lookupUrl = buildCfmLookupUrl(crm, uf);
-    window.open(lookupUrl, "_blank", "noopener,noreferrer");
-    latestDoctorLookup = {
-      checked: true,
-      verified: latestDoctorLookup.verified,
-      source: "cfm-link",
-      checkedAt: new Date().toISOString(),
-      message: "Busca do CFM aberta em nova aba."
-    };
-    updateFeedback("Busca do CFM aberta em nova aba.");
+  doctorUfSelect?.addEventListener("change", () => {
+    latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
   });
 }
 
-function registerQuestionnaireRequest(result) {
-  const expectedTussCodes = result.protocol.tuss.map((item) => item.codigo);
-  const payload = {
-    id: buildRequestId(),
-    createdAt: new Date().toISOString(),
-    doctor: result.requestContext.doctor,
-    patient: result.requestContext.patient,
-    surgeryDate: result.requestContext.surgeryDate,
-    protocolLabel: result.protocol.label,
-    tussCodes: result.tuss.map((item) => item.code),
-    expectedTussCodes,
-    opmeItems: result.opme,
-    expectedOpmeCount: result.opme.length,
-    outcomes: {
-      negativeCodes: [],
-      reoperationUnder90: false,
-      reoperationDate: ""
-    }
+function extractDoctorFromUploadText(text) {
+  const content = String(text || "");
+  const crmMatch = content.match(/CRM\s*[:\-]?\s*(\d{4,8})\s*\/?\s*([A-Z]{2})?/i);
+  const doctorLineMatch = content.match(/MEDICO\s+SOLICITANTE\s*:\s*([^\n\r|]+)/i);
+  const specialtyMatch = content.match(/ESPECIALIDADE\s*:\s*([^\n\r]+)/i);
+
+  return {
+    crm: crmMatch?.[1] ? onlyDigits(crmMatch[1]) : "",
+    uf: crmMatch?.[2] ? crmMatch[2].toUpperCase() : "",
+    name: doctorLineMatch?.[1] ? doctorLineMatch[1].trim() : "",
+    specialty: specialtyMatch?.[1] ? specialtyMatch[1].trim() : ""
   };
-  registerRequestEntry(payload);
+}
+
+function hydrateDoctorFromUploadText(text) {
+  const extracted = extractDoctorFromUploadText(text);
+  if (!extracted.crm && !extracted.name) {
+    return;
+  }
+
+  if (extracted.crm && doctorCrmInput) {
+    doctorCrmInput.value = extracted.crm;
+  }
+
+  if (extracted.uf && doctorUfSelect) {
+    doctorUfSelect.value = extracted.uf;
+  }
+
+  if (extracted.name && doctorNameInput) {
+    doctorNameInput.value = extracted.name;
+  }
+
+  if (extracted.specialty && doctorSpecialtyInput) {
+    doctorSpecialtyInput.value = extracted.specialty;
+  }
+
+  if (doctorStatusInput && !doctorStatusInput.value.trim()) {
+    doctorStatusInput.value = "Ativo";
+  }
 }
 
 function registerUploadRequest(report, text) {
-  const contextCheck = validateRequestContext();
-  if (!contextCheck.ok) {
-    uploadResult.innerHTML = `<p>${escapeHtml(contextCheck.message)}</p>`;
+  hydrateDoctorFromUploadText(text);
+
+  const context = getRequestContext();
+  if (!context.doctor.crm || !context.doctor.uf) {
+    uploadResult.innerHTML =
+      "<p>Não foi possível ranquear: informe CRM e UF do médico (ou inclua no texto do pedido).</p>";
     return false;
   }
 
-  const context = contextCheck.context;
+  if (!context.doctor.name) {
+    context.doctor.name = `CRM ${context.doctor.crm}/${context.doctor.uf}`;
+    if (doctorNameInput) {
+      doctorNameInput.value = context.doctor.name;
+    }
+  }
+
+  if (!context.patient.name) {
+    context.patient.name = "Paciente não informado";
+  }
+
+  if (!context.patient.document) {
+    context.patient.document = `SEM-DOC-${Date.now()}`;
+  }
+
+  if (!context.surgeryDate) {
+    context.surgeryDate = new Date().toISOString().slice(0, 10);
+    if (surgeryDateInput) {
+      surgeryDateInput.value = context.surgeryDate;
+    }
+  }
+
   const protocol = detectProtocolByText(text);
   const expectedTussCodes = protocol ? protocol.tuss.map((item) => item.codigo) : [...ALL_VALID_TUSS].slice(0, 4);
 
@@ -1589,6 +1682,28 @@ function registerUploadRequest(report, text) {
   };
   registerRequestEntry(payload);
   return true;
+}
+
+function registerQuestionnaireRequest(result) {
+  const expectedTussCodes = result.protocol.tuss.map((item) => item.codigo);
+  const payload = {
+    id: buildRequestId(),
+    createdAt: new Date().toISOString(),
+    doctor: result.requestContext.doctor,
+    patient: result.requestContext.patient,
+    surgeryDate: result.requestContext.surgeryDate,
+    protocolLabel: result.protocol.label,
+    tussCodes: result.tuss.map((item) => item.code),
+    expectedTussCodes,
+    opmeItems: result.opme,
+    expectedOpmeCount: result.opme.length,
+    outcomes: {
+      negativeCodes: [],
+      reoperationUnder90: false,
+      reoperationDate: ""
+    }
+  };
+  registerRequestEntry(payload);
 }
 
 function bindRankingWindow() {
