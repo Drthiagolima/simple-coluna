@@ -273,6 +273,52 @@ main {
   gap: 0.7rem;
 }
 
+.access-progress {
+  margin-top: 0.2rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed rgba(31, 122, 114, 0.26);
+}
+
+.access-progress-text {
+  margin: 0 0 0.45rem;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.access-progress-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.access-progress-steps li {
+  text-align: center;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 92, 98, 0.24);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink-soft);
+  font-size: 0.77rem;
+  font-weight: 700;
+  padding: 0.3rem 0.55rem;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.access-progress-steps li.active {
+  background: rgba(31, 122, 114, 0.13);
+  color: var(--accent);
+  border-color: rgba(31, 122, 114, 0.45);
+}
+
+.access-progress-steps li.done {
+  background: rgba(21, 115, 71, 0.12);
+  color: #157347;
+  border-color: rgba(21, 115, 71, 0.38);
+}
+
 .landing-actions a {
   text-decoration: none;
 }
@@ -1028,6 +1074,10 @@ footer {
   }
 
   .landing-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .access-progress-steps {
     grid-template-columns: 1fr;
   }
 

@@ -30,7 +30,7 @@
       <div class="topbar-actions">
         <label class="admin-btn secondary focus-toggle-btn" for="focusModeToggle">Modo foco</label>
         <span class="focus-indicator" aria-live="polite">Foco ativo</span>
-        <a class="admin-btn secondary top-login-link" href="#loginGate">Login seguro</a>
+        <a id="topLoginLink" class="admin-btn secondary top-login-link" href="#loginGate">Login seguro</a>
         <button id="adminToggleBtn" class="admin-btn hidden" type="button">Painel Admin</button>
         <div class="chip">Versão 0.2</div>
       </div>
@@ -56,7 +56,16 @@
 
           <div class="landing-actions">
             <button id="enterPlatformBtn" class="admin-btn" type="button">Acessar com login</button>
-            <a class="admin-btn secondary" href="#landingJourney">Como funciona</a>
+            <a id="journeyAnchorBtn" class="admin-btn secondary" href="#landingJourney">Como funciona</a>
+          </div>
+
+          <div class="access-progress" aria-label="progresso de acesso">
+            <p id="accessProgressText" class="access-progress-text">Progresso de acesso: 1/3</p>
+            <ol id="accessProgressSteps" class="access-progress-steps">
+              <li data-step="1" class="active">Entender</li>
+              <li data-step="2">Validar fluxo</li>
+              <li data-step="3">Autenticar</li>
+            </ol>
           </div>
         </div>
 
@@ -147,7 +156,7 @@
           <p class="eyebrow">Próximo passo</p>
           <h2>Entre no ambiente interno para utilizar os módulos técnicos do Simple Coluna.</h2>
         </div>
-        <a class="admin-btn" href="#loginGate">Ir para login seguro</a>
+        <a id="finalLoginCta" class="admin-btn" href="#loginGate">Ir para login seguro</a>
       </section>
 
       <section class="landing-faq reveal supplemental-section" aria-label="perguntas frequentes institucionais">
@@ -181,7 +190,7 @@
             <li>Acesse os módulos técnicos internos após validação.</li>
           </ol>
         </div>
-        <a class="admin-btn" href="#loginGate">Continuar para autenticação</a>
+        <a id="quickAccessLoginBtn" class="admin-btn" href="#loginGate">Continuar para autenticação</a>
       </section>
 
       <section id="loginGate" class="login-gate reveal" aria-label="acesso seguro">

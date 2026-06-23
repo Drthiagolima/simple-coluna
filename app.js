@@ -5,6 +5,7 @@ const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simpl
 const AUTH_PASSWORD = "simplecoluna";
 const STORAGE_KEY_REQUEST_HISTORY = "simplecoluna.requests.v1";
 const STORAGE_KEY_FOCUS_MODE = "simplecoluna.landing.focus.v1";
+const STORAGE_KEY_ACCESS_PROGRESS = "simplecoluna.landing.access-progress.v1";
 const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261", "31401260"];
 const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
 
@@ -259,6 +260,12 @@ const loginPasswordInput = document.querySelector("#loginPasswordInput");
 const loginFeedback = document.querySelector("#loginFeedback");
 const appArea = document.querySelector("#appArea");
 const focusModeToggle = document.querySelector("#focusModeToggle");
+const journeyAnchorBtn = document.querySelector("#journeyAnchorBtn");
+const topLoginLink = document.querySelector("#topLoginLink");
+const finalLoginCta = document.querySelector("#finalLoginCta");
+const quickAccessLoginBtn = document.querySelector("#quickAccessLoginBtn");
+const accessProgressText = document.querySelector("#accessProgressText");
+const accessProgressSteps = document.querySelectorAll("#accessProgressSteps li");
 
 const lesionForm = document.querySelector("#lesionForm");
 const editingIdInput = document.querySelector("#editingId");
@@ -902,12 +909,63 @@ function bindAdmin() {
 
 function bindLanding() {
   enterPlatformBtn?.addEventListener("click", () => {
+    setAccessProgress(3);
     if (isAuthenticated) {
       appArea?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     loginGate?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
+
+  journeyAnchorBtn?.addEventListener("click", () => setAccessProgress(2));
+  topLoginLink?.addEventListener("click", () => setAccessProgress(3));
+  finalLoginCta?.addEventListener("click", () => setAccessProgress(3));
+  quickAccessLoginBtn?.addEventListener("click", () => setAccessProgress(3));
+}
+
+function setAccessProgress(step) {
+  if (!accessProgressText || !accessProgressSteps.length) {
+    return;
+  }
+
+  const normalizedStep = Math.max(1, Math.min(3, Number(step) || 1));
+  accessProgressText.textContent = `Progresso de acesso: ${normalizedStep}/3`;
+
+  accessProgressSteps.forEach((item) => {
+    const itemStep = Number(item.dataset.step || "1");
+    item.classList.toggle("active", itemStep === normalizedStep);
+    item.classList.toggle("done", itemStep < normalizedStep);
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY_ACCESS_PROGRESS, String(normalizedStep));
+  } catch {
+    // Ignora indisponibilidade de armazenamento local.
+  }
+}
+
+function bindAccessProgress() {
+  if (!accessProgressText || !accessProgressSteps.length) {
+    return;
+  }
+
+  let startStep = 1;
+  try {
+    const saved = Number(localStorage.getItem(STORAGE_KEY_ACCESS_PROGRESS) || "1");
+    if (!Number.isNaN(saved)) {
+      startStep = saved;
+    }
+  } catch {
+    startStep = 1;
+  }
+
+  if (window.location.hash === "#loginGate") {
+    startStep = 3;
+  } else if (window.location.hash === "#landingJourney") {
+    startStep = Math.max(startStep, 2);
+  }
+
+  setAccessProgress(startStep);
 }
 
 function bindFocusMode() {
@@ -1619,6 +1677,7 @@ async function loadData() {
 
 function init() {
   bindFocusMode();
+  bindAccessProgress();
   loadRequestHistory();
   renderOutcomeRequestOptions();
   renderDoctorRanking();
