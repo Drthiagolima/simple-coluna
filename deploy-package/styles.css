@@ -695,6 +695,27 @@ textarea:focus-visible {
   gap: 1.2rem;
 }
 
+.internal-head {
+  background: linear-gradient(125deg, rgba(21, 36, 42, 0.94), rgba(31, 122, 114, 0.9));
+  border-radius: 18px;
+  padding: 1rem 1.15rem;
+  color: #f3fbf9;
+}
+
+.internal-head .eyebrow {
+  color: rgba(243, 251, 249, 0.8);
+}
+
+.internal-head h2 {
+  font-size: clamp(1.4rem, 2.3vw, 2rem);
+  margin-bottom: 0.25rem;
+}
+
+.internal-head p {
+  margin: 0;
+  color: rgba(243, 251, 249, 0.9);
+}
+
 .internal-shell {
   display: grid;
   grid-template-columns: minmax(220px, 260px) 1fr;

@@ -393,6 +393,7 @@ function bindLoginGate() {
     loginFeedback.textContent = "Login realizado com sucesso.";
     loginFeedback.classList.remove("error");
     loginForm.reset();
+    setInternalTab("build");
     applyAuthState();
     appArea?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
