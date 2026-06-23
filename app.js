@@ -1,4 +1,4 @@
-const STORAGE_KEY_LESIONS = "simplecoluna.lesoes.v1";
+﻿const STORAGE_KEY_LESIONS = "simplecoluna.lesoes.v1";
 const SESSION_KEY_AUTH = "simplecoluna.session.auth.v1";
 const AUTH_LOGIN = "admistracao@simplecoluna.com";
 const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simplecoluna.com"];
@@ -389,7 +389,7 @@ function bindLoginGate() {
     if (!isValidLogin(email, password)) {
       isAuthenticated = false;
       sessionStorage.removeItem(SESSION_KEY_AUTH);
-      loginFeedback.textContent = "Credenciais inválidas. Verifique login e senha.";
+      loginFeedback.textContent = "Credenciais invÃ¡lidas. Verifique login e senha.";
       loginFeedback.classList.add("error");
       applyAuthState();
       return;
@@ -489,7 +489,7 @@ function getRequestContext() {
 function validateRequestContext() {
   const context = getRequestContext();
   const missing = [];
-  if (!context.doctor.name) missing.push("nome do médico");
+  if (!context.doctor.name) missing.push("nome do mÃ©dico");
   if (!context.doctor.crm) missing.push("CRM");
   if (!context.doctor.uf) missing.push("UF do CRM");
   if (!context.patient.name) missing.push("nome do paciente");
@@ -660,9 +660,9 @@ function rankDoctors() {
       const score = doctor.requests ? Math.round(doctor.scoreSum / doctor.requests) : 0;
       const details = [
         `Base: +${doctor.points.base}`,
-        `Critérios preenchidos: +${doctor.points.bonusTuss + doctor.points.bonusOpme + doctor.points.bonusDoctor + doctor.points.bonusPatient}`,
-        `Pendências: -${doctor.points.penaltyMissingTuss + doctor.points.penaltyOpme + doctor.points.penaltyDoctor + doctor.points.penaltyPatient}`,
-        `Complicações (códigos negativos): -${doctor.points.penaltyComplications}`,
+        `CritÃ©rios preenchidos: +${doctor.points.bonusTuss + doctor.points.bonusOpme + doctor.points.bonusDoctor + doctor.points.bonusPatient}`,
+        `PendÃªncias: -${doctor.points.penaltyMissingTuss + doctor.points.penaltyOpme + doctor.points.penaltyDoctor + doctor.points.penaltyPatient}`,
+        `ComplicaÃ§Ãµes (cÃ³digos negativos): -${doctor.points.penaltyComplications}`,
         `Reabordagem precoce: -${doctor.points.penaltyEarlyReoperation}`
       ];
 
@@ -1212,13 +1212,13 @@ function buildSurgeryRequestTemplate(payload) {
   const tushList = payload.tuss
     .map(
       (item) =>
-        `• ${item.code} — ${item.title} — Aplicacao: ${item.application}`
+        `â€¢ ${item.code} â€” ${item.title} â€” Aplicacao: ${item.application}`
     )
     .join("\n");
 
-  const opmeList = payload.opme.map((item) => `• ${item}`).join("\n");
+  const opmeList = payload.opme.map((item) => `â€¢ ${item}`).join("\n");
 
-  return `SOLICITACAO DE CIRURGIA\nMEDICO SOLICITANTE: ${payload.doctorName} | CRM ${payload.doctorCrm}/${payload.doctorUf}\nPACIENTE: ${payload.patientName} | DOCUMENTO: ${payload.patientDocument}\nDATA DA CIRURGIA: ${payload.surgeryDate}\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\n• ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\n• ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\n• Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
+  return `SOLICITACAO DE CIRURGIA\nMEDICO SOLICITANTE: ${payload.doctorName} | CRM ${payload.doctorCrm}/${payload.doctorUf}\nPACIENTE: ${payload.patientName} | DOCUMENTO: ${payload.patientDocument}\nDATA DA CIRURGIA: ${payload.surgeryDate}\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\nâ€¢ ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\nâ€¢ ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\nâ€¢ Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
 }
 
 function renderQuestionnaireResult(result) {
@@ -1226,7 +1226,7 @@ function renderQuestionnaireResult(result) {
   latestRequestFileName = `solicitacao-${toFileSafe(result.protocol.label)}-${result.cid || "cid"}.txt`;
   const reasonsHtml = result.urgency.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("");
   const tussHtml = result.tuss
-    .map((item) => `<li><strong>${escapeHtml(item.code)}</strong> — ${escapeHtml(item.title)}</li>`)
+    .map((item) => `<li><strong>${escapeHtml(item.code)}</strong> â€” ${escapeHtml(item.title)}</li>`)
     .join("");
   const opmeHtml = result.opme.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   const techHtml = result.technologyRecommendations
@@ -1255,7 +1255,7 @@ function renderQuestionnaireResult(result) {
     <p><strong>Tecnologia recomendada (aula):</strong></p>
     <ul>${techHtml}</ul>
     <div class="result-actions">
-      <button id="copyRequestBtn" class="admin-btn secondary" type="button">Copiar solicitação</button>
+      <button id="copyRequestBtn" class="admin-btn secondary" type="button">Copiar solicitaÃ§Ã£o</button>
       <button id="downloadRequestBtn" class="admin-btn secondary" type="button">Baixar .txt</button>
     </div>
     <p><strong>Pedido padronizado:</strong></p>
@@ -1464,7 +1464,7 @@ function buildAlternativePedido(report) {
   const missingItems = report.checks.filter((item) => !item.ok).map((item) => item.label);
   const missingTuss = report.tussFound.length >= 4 ? "" : "Incluir 4 codigos TUSS cirurgicos compativeis com o caso.";
   const missingCompany = report.hasCompanies ? "" : "Inserir empresa permitida (Stryker, Smith Nephew, Johnson, Zimmer, Medtronic, Satrattner, Handle).";
-  const missingAnexo = report.hasAnexoPhrase ? "" : "Adicionar frase final obrigatoria de anexos comprobatórios.";
+  const missingAnexo = report.hasAnexoPhrase ? "" : "Adicionar frase final obrigatoria de anexos comprobatÃ³rios.";
 
   const adjustments = [...missingItems, missingTuss, missingCompany, missingAnexo].filter(Boolean);
 
@@ -1477,7 +1477,7 @@ function buildAlternativePedido(report) {
     "Estrutura minima sugerida:",
     "- CID-10 principal + procedimento cirurgico proposto.",
     "- Niveis cirurgicos explicitados.",
-    "- Justificativa clinica com falha de tratamento prévio e escala funcional.",
+    "- Justificativa clinica com falha de tratamento prÃ©vio e escala funcional.",
     "- Lista de OPME por item, com codigos e objetivo tecnico.",
     "- Bloco final: OS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO."
   ].join("\n");
@@ -1512,7 +1512,7 @@ function renderUploadResult(report) {
     const altBlock = document.createElement("div");
     altBlock.className = "result-actions";
     altBlock.innerHTML = `
-      <p><strong>Versão alternativa sugerida:</strong></p>
+      <p><strong>VersÃ£o alternativa sugerida:</strong></p>
       <pre>${escapeHtml(alternative)}</pre>
     `;
     uploadResult.appendChild(altBlock);
@@ -1543,16 +1543,64 @@ function bindInternalTabs() {
   setInternalTab("build");
 }
 
-function bindDoctorRegistry() {
-  const localDirectory = {
-    "123456-SP": {
-      name: "Dr. Thiago Lima",
-      specialty: "Ortopedia e Traumatologia",
-      status: "Ativo"
-    }
-  };
+function parseDoctorProfileFromCfmText(text, crm, uf) {
+  const source = String(text || "");
+  const crmUfRegex = new RegExp(`${crm}\\s*\\/?\\s*${uf}`, "i");
+  const nameMatch =
+    source.match(/Nome(?: do medico| do m[eé]dico)?\s*[:\-]\s*([^\n\r|]{6,120})/i) ||
+    source.match(/M[eé]dico\s*[:\-]\s*([^\n\r|]{6,120})/i) ||
+    source.match(new RegExp(`([A-ZÀ-Ú][A-Za-zÀ-ÿ'\\s.-]{6,120})\\s+CRM\\s*[:\\-]?\\s*${crm}`, "i"));
+  const specialtyMatch = source.match(/Especialidade(?: Registrada)?\s*[:\-]\s*([^\n\r|]{3,120})/i);
+  const statusMatch = source.match(/Situa[cç][aã]o(?: da Inscri[cç][aã]o)?\s*[:\-]\s*([^\n\r|]{3,80})/i);
 
-  const profileKey = (crm, uf) => `${onlyDigits(crm)}-${(uf || "").trim().toUpperCase()}`;
+  if (!crmUfRegex.test(source) && !nameMatch) {
+    return null;
+  }
+
+  const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
+  return {
+    name: clean(nameMatch?.[1] || ""),
+    specialty: clean(specialtyMatch?.[1] || "Não informado"),
+    status: clean(statusMatch?.[1] || "Ativo")
+  };
+}
+
+async function fetchDoctorProfileFromCfm(crm, uf) {
+  const directUrl = buildCfmLookupUrl(crm, uf);
+  const proxyUrl = `https://r.jina.ai/http://portal.cfm.org.br/busca-medicos/?crm=${encodeURIComponent(crm)}&uf=${encodeURIComponent(uf)}`;
+  const attempts = [
+    { url: directUrl, source: "cfm-direto" },
+    { url: proxyUrl, source: "cfm-proxy" }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const response = await fetch(attempt.url, { method: "GET", cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+
+      const text = await response.text();
+      const profile = parseDoctorProfileFromCfmText(text, crm, uf);
+      if (profile) {
+        return { ...profile, source: attempt.source };
+      }
+    } catch {
+      // Ignora tentativa e segue para a proxima rota.
+    }
+  }
+
+  return null;
+}
+
+function bindDoctorRegistry() {
+  const updateFeedback = (message, isError = false) => {
+    if (!cfmLookupFeedback) {
+      return;
+    }
+    cfmLookupFeedback.textContent = message;
+    cfmLookupFeedback.classList.toggle("error", isError);
+  };
 
   const applyDoctorProfile = (profile) => {
     if (profile.name && doctorNameInput) {
@@ -1566,58 +1614,23 @@ function bindDoctorRegistry() {
     }
   };
 
-  const findDoctorProfile = (crm, uf) => {
-    const key = profileKey(crm, uf);
-    if (!key || key === "-") {
-      return null;
-    }
-
-    if (localDirectory[key]) {
-      return { ...localDirectory[key], source: "cadastro-local" };
-    }
-
-    const previous = requestHistory.find(
-      (entry) =>
-        profileKey(entry.doctor?.crm || "", entry.doctor?.uf || "") === key &&
-        (entry.doctor?.name || "").trim()
-    );
-
-    if (!previous) {
-      return null;
-    }
-
-    return {
-      name: previous.doctor.name,
-      specialty: previous.doctor.specialty || "Não informado",
-      status: previous.doctor.status || "Ativo",
-      source: "historico-interno"
-    };
-  };
-
-  const updateFeedback = (message, isError = false) => {
-    if (!cfmLookupFeedback) {
-      return;
-    }
-    cfmLookupFeedback.textContent = message;
-    cfmLookupFeedback.classList.toggle("error", isError);
-  };
-
   checkCfmBtn?.addEventListener("click", async () => {
     const crm = onlyDigits(doctorCrmInput?.value || "");
     const uf = (doctorUfSelect?.value || "").trim().toUpperCase();
     if (!crm || !uf) {
-      updateFeedback("Informe CRM e UF para buscar os dados do médico.", true);
+      updateFeedback("Informe CRM e UF para consultar o CFM.", true);
       return;
     }
 
-    const profile = findDoctorProfile(crm, uf);
+    updateFeedback("Consultando CFM por CRM e UF...");
+    const profile = await fetchDoctorProfileFromCfm(crm, uf);
     if (!profile) {
       latestDoctorLookup = {
         checked: true,
         verified: false,
-        source: "sem-correspondencia-local",
+        source: "cfm-indisponivel",
         checkedAt: new Date().toISOString(),
-        message: "CRM não localizado no histórico local. Preencha nome/especialidade manualmente."
+        message: "Não foi possível obter os dados do CFM automaticamente."
       };
       if (doctorSpecialtyInput) {
         doctorSpecialtyInput.value = "";
@@ -1625,7 +1638,7 @@ function bindDoctorRegistry() {
       if (doctorStatusInput) {
         doctorStatusInput.value = "";
       }
-      updateFeedback(latestDoctorLookup.message, false);
+      updateFeedback("Não foi possível retornar dados do CFM no momento. Tente novamente.", true);
       return;
     }
 
@@ -1635,9 +1648,9 @@ function bindDoctorRegistry() {
       verified: true,
       source: profile.source,
       checkedAt: new Date().toISOString(),
-      message: "Dados do médico preenchidos automaticamente na página."
+      message: "Dados do médico preenchidos automaticamente a partir da busca no CFM."
     };
-    updateFeedback(latestDoctorLookup.message);
+    updateFeedback(latestDoctorLookup.message, false);
   });
 
   doctorCrmInput?.addEventListener("input", () => {
@@ -1696,7 +1709,7 @@ function registerUploadRequest(report, text) {
   const context = getRequestContext();
   if (!context.doctor.crm || !context.doctor.uf) {
     uploadResult.innerHTML =
-      "<p>Não foi possível ranquear: informe CRM e UF do médico (ou inclua no texto do pedido).</p>";
+      "<p>NÃ£o foi possÃ­vel ranquear: informe CRM e UF do mÃ©dico (ou inclua no texto do pedido).</p>";
     return false;
   }
 
@@ -1708,7 +1721,7 @@ function registerUploadRequest(report, text) {
   }
 
   if (!context.patient.name) {
-    context.patient.name = "Paciente não informado";
+    context.patient.name = "Paciente nÃ£o informado";
   }
 
   if (!context.patient.document) {
@@ -1775,7 +1788,7 @@ function bindRankingWindow() {
     const requestId = outcomeRequestSelect?.value || "";
     const entry = requestHistory.find((item) => item.id === requestId);
     if (!entry) {
-      outcomeFeedback.textContent = "Selecione um pedido válido para registrar o desfecho.";
+      outcomeFeedback.textContent = "Selecione um pedido vÃ¡lido para registrar o desfecho.";
       outcomeFeedback.classList.add("error");
       return;
     }
@@ -1801,8 +1814,8 @@ function bindRankingWindow() {
     renderDoctorRanking();
 
     outcomeFeedback.textContent = reoperationUnder90
-      ? "Desfecho salvo com alerta de reoperação em intervalo superior a 10 dias."
-      : "Desfecho salvo no ranking médico.";
+      ? "Desfecho salvo com alerta de reoperaÃ§Ã£o em intervalo superior a 10 dias."
+      : "Desfecho salvo no ranking mÃ©dico.";
     outcomeFeedback.classList.remove("error");
   });
 }
@@ -1896,12 +1909,12 @@ function bindDecisionHub() {
         await navigator.clipboard.writeText(latestRequestTemplate);
         btn.textContent = "Copiado";
         setTimeout(() => {
-          btn.textContent = "Copiar solicitação";
+          btn.textContent = "Copiar solicitaÃ§Ã£o";
         }, 1500);
       } catch {
         btn.textContent = "Falha ao copiar";
         setTimeout(() => {
-          btn.textContent = "Copiar solicitação";
+          btn.textContent = "Copiar solicitaÃ§Ã£o";
         }, 1500);
       }
       return;
@@ -1978,3 +1991,5 @@ function init() {
 }
 
 init();
+
+
