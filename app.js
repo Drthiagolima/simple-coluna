@@ -265,6 +265,8 @@ const topLoginLink = document.querySelector("#topLoginLink");
 const finalLoginCta = document.querySelector("#finalLoginCta");
 const quickAccessLoginBtn = document.querySelector("#quickAccessLoginBtn");
 const accessProgressText = document.querySelector("#accessProgressText");
+const accessProgressBar = document.querySelector("#accessProgressBar");
+const accessProgressFill = document.querySelector("#accessProgressFill");
 const accessProgressSteps = document.querySelectorAll("#accessProgressSteps li");
 
 const lesionForm = document.querySelector("#lesionForm");
@@ -930,6 +932,14 @@ function setAccessProgress(step) {
 
   const normalizedStep = Math.max(1, Math.min(3, Number(step) || 1));
   accessProgressText.textContent = `Progresso de acesso: ${normalizedStep}/3`;
+
+  const progressPercent = ((normalizedStep - 1) / 2) * 100;
+  if (accessProgressFill) {
+    accessProgressFill.style.width = `${progressPercent}%`;
+  }
+  if (accessProgressBar) {
+    accessProgressBar.setAttribute("aria-valuenow", String(normalizedStep));
+  }
 
   accessProgressSteps.forEach((item) => {
     const itemStep = Number(item.dataset.step || "1");

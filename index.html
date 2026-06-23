@@ -61,6 +61,17 @@
 
           <div class="access-progress" aria-label="progresso de acesso">
             <p id="accessProgressText" class="access-progress-text">Progresso de acesso: 1/3</p>
+            <div
+              id="accessProgressBar"
+              class="access-progress-bar"
+              role="progressbar"
+              aria-label="progresso de acesso"
+              aria-valuemin="1"
+              aria-valuemax="3"
+              aria-valuenow="1"
+            >
+              <span id="accessProgressFill" class="access-progress-fill"></span>
+            </div>
             <ol id="accessProgressSteps" class="access-progress-steps">
               <li data-step="1" class="active">Entender</li>
               <li data-step="2">Validar fluxo</li>

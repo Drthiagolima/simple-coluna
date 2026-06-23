@@ -286,6 +286,24 @@ main {
   font-weight: 700;
 }
 
+.access-progress-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(79, 92, 98, 0.16);
+  overflow: hidden;
+  margin-bottom: 0.52rem;
+}
+
+.access-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(31, 122, 114, 0.82), rgba(31, 122, 114, 1));
+  transition: width 320ms ease;
+}
+
 .access-progress-steps {
   list-style: none;
   margin: 0;
@@ -1142,6 +1160,10 @@ footer {
 
   .journey-step,
   .admin-btn {
+    transition: none;
+  }
+
+  .access-progress-fill {
     transition: none;
   }
 
