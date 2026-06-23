@@ -494,6 +494,23 @@ function loadRequestHistory() {
 }
 
 function registerRequestEntry(payload) {
+  const previousSamePatient = requestHistory.find(
+    (entry) =>
+      normalized(entry.patient.document || "") === normalized(payload.patient.document || "") &&
+      entry.id !== payload.id
+  );
+
+  if (previousSamePatient) {
+    const interval = daysBetween(previousSamePatient.surgeryDate, payload.surgeryDate);
+    if (interval !== null && interval < 90) {
+      payload.outcomes = {
+        ...(payload.outcomes || {}),
+        reoperationUnder90: true,
+        reoperationDate: payload.surgeryDate
+      };
+    }
+  }
+
   requestHistory.unshift(payload);
   persistRequestHistory();
   renderOutcomeRequestOptions();
