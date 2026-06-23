@@ -550,20 +550,68 @@ function buildRequestId() {
   return `PED-${Date.now()}`;
 }
 
-function calculateRequestMetrics(entry) {
-  const expectedTuss = entry.expectedTussCodes?.length || 4;
-  const matchedTuss = (entry.tussCodes || []).filter((code) => (entry.expectedTussCodes || []).includes(code)).length;
-  const tussAdherence = expectedTuss ? Math.min(matchedTuss / expectedTuss, 1) : 0;
+function evaluateEntryScore(entry) {
+  const expectedTussCodes = entry.expectedTussCodes || [];
+  const informedTussCodes = entry.tussCodes || [];
+  const matchedTuss = informedTussCodes.filter((code) => expectedTussCodes.includes(code)).length;
+  const missingTuss = Math.max(expectedTussCodes.length - matchedTuss, 0);
 
   const expectedOpme = entry.expectedOpmeCount || 1;
-  const opmeCount = entry.opmeItems?.length || 0;
-  const opmeAdherence = expectedOpme ? Math.min(opmeCount / expectedOpme, 1) : 0;
+  const informedOpme = entry.opmeItems?.length || 0;
+  const opmeCompleted = informedOpme >= expectedOpme;
+
+  const hasDoctorIdentity =
+    Boolean((entry.doctor?.name || "").trim()) && Boolean((entry.doctor?.crm || "").trim()) && Boolean((entry.doctor?.uf || "").trim());
+  const hasPatientIdentity =
+    Boolean((entry.patient?.name || "").trim()) &&
+    Boolean((entry.patient?.document || "").trim()) &&
+    Boolean((entry.surgeryDate || "").trim());
 
   const negativeCodes = entry.outcomes?.negativeCodes || [];
   const complications = negativeCodes.filter((code) => NEGATIVE_TUSS_CODES.includes(code)).length;
-  const reoperationUnder90 = entry.outcomes?.reoperationUnder90 ? 1 : 0;
+  const hasEarlyReoperation = Boolean(entry.outcomes?.reoperationUnder90);
 
-  return { tussAdherence, opmeAdherence, complications, reoperationUnder90 };
+  const base = 35;
+  const bonusTuss = matchedTuss * 9;
+  const bonusOpme = opmeCompleted ? 12 : 0;
+  const bonusDoctor = hasDoctorIdentity ? 7 : 0;
+  const bonusPatient = hasPatientIdentity ? 7 : 0;
+
+  const penaltyMissingTuss = missingTuss * 10;
+  const penaltyOpme = opmeCompleted ? 0 : 12;
+  const penaltyDoctor = hasDoctorIdentity ? 0 : 8;
+  const penaltyPatient = hasPatientIdentity ? 0 : 8;
+  const penaltyComplications = complications * 20;
+  const penaltyEarlyReoperation = hasEarlyReoperation ? 25 : 0;
+
+  const positive = base + bonusTuss + bonusOpme + bonusDoctor + bonusPatient;
+  const negative =
+    penaltyMissingTuss +
+    penaltyOpme +
+    penaltyDoctor +
+    penaltyPatient +
+    penaltyComplications +
+    penaltyEarlyReoperation;
+  const score = Math.max(0, Math.min(100, Math.round(positive - negative)));
+
+  return {
+    score,
+    complications,
+    hasEarlyReoperation,
+    points: {
+      base,
+      bonusTuss,
+      bonusOpme,
+      bonusDoctor,
+      bonusPatient,
+      penaltyMissingTuss,
+      penaltyOpme,
+      penaltyDoctor,
+      penaltyPatient,
+      penaltyComplications,
+      penaltyEarlyReoperation
+    }
+  };
 }
 
 function rankDoctors() {
@@ -576,34 +624,52 @@ function rankDoctors() {
         doctorName: entry.doctor.name,
         crm: `${entry.doctor.crm}/${entry.doctor.uf}`,
         requests: 0,
-        tussSum: 0,
-        opmeSum: 0,
+        scoreSum: 0,
         complications: 0,
-        reoperationUnder90: 0
+        earlyReoperations: 0,
+        points: {
+          base: 0,
+          bonusTuss: 0,
+          bonusOpme: 0,
+          bonusDoctor: 0,
+          bonusPatient: 0,
+          penaltyMissingTuss: 0,
+          penaltyOpme: 0,
+          penaltyDoctor: 0,
+          penaltyPatient: 0,
+          penaltyComplications: 0,
+          penaltyEarlyReoperation: 0
+        }
       });
     }
 
-    const metrics = calculateRequestMetrics(entry);
+    const entryScore = evaluateEntryScore(entry);
     const doctor = groups.get(key);
     doctor.requests += 1;
-    doctor.tussSum += metrics.tussAdherence;
-    doctor.opmeSum += metrics.opmeAdherence;
-    doctor.complications += metrics.complications;
-    doctor.reoperationUnder90 += metrics.reoperationUnder90;
+    doctor.scoreSum += entryScore.score;
+    doctor.complications += entryScore.complications;
+    doctor.earlyReoperations += entryScore.hasEarlyReoperation ? 1 : 0;
+
+    Object.keys(doctor.points).forEach((pointKey) => {
+      doctor.points[pointKey] += entryScore.points[pointKey] || 0;
+    });
   });
 
   return [...groups.values()]
     .map((doctor) => {
-      const avgTuss = doctor.requests ? doctor.tussSum / doctor.requests : 0;
-      const avgOpme = doctor.requests ? doctor.opmeSum / doctor.requests : 0;
-      const scoreRaw = avgTuss * 50 + avgOpme * 25 - doctor.complications * 8 - doctor.reoperationUnder90 * 20;
-      const score = Math.max(0, Math.min(100, Math.round(scoreRaw)));
+      const score = doctor.requests ? Math.round(doctor.scoreSum / doctor.requests) : 0;
+      const details = [
+        `Base: +${doctor.points.base}`,
+        `Critérios preenchidos: +${doctor.points.bonusTuss + doctor.points.bonusOpme + doctor.points.bonusDoctor + doctor.points.bonusPatient}`,
+        `Pendências: -${doctor.points.penaltyMissingTuss + doctor.points.penaltyOpme + doctor.points.penaltyDoctor + doctor.points.penaltyPatient}`,
+        `Complicações (códigos negativos): -${doctor.points.penaltyComplications}`,
+        `Reabordagem precoce: -${doctor.points.penaltyEarlyReoperation}`
+      ];
 
       return {
         ...doctor,
-        avgTuss,
-        avgOpme,
-        score
+        score,
+        scoreDetails: details.join(" | ")
       };
     })
     .sort((a, b) => b.score - a.score || b.requests - a.requests);
@@ -622,18 +688,14 @@ function renderDoctorRanking() {
     row.innerHTML = `
       <td>${escapeHtml(item.doctorName)}</td>
       <td>${escapeHtml(item.crm)}</td>
-      <td>${item.requests}</td>
-      <td>${Math.round(item.avgTuss * 100)}%</td>
-      <td>${Math.round(item.avgOpme * 100)}%</td>
-      <td>${item.complications}</td>
-      <td>${item.reoperationUnder90}</td>
       <td><strong>${item.score}</strong></td>
+      <td>${escapeHtml(item.scoreDetails)}</td>
     `;
     doctorRankingTableBody.appendChild(row);
   });
 
   if (!ranking.length) {
-    doctorRankingTableBody.innerHTML = "<tr><td colspan='8'>Sem pedidos registrados para ranqueamento.</td></tr>";
+    doctorRankingTableBody.innerHTML = "<tr><td colspan='4'>Sem pedidos registrados para ranqueamento.</td></tr>";
   }
 }
 
