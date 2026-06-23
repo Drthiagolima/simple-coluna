@@ -473,6 +473,45 @@ main {
   font-size: 0.9rem;
 }
 
+.landing-access {
+  background: linear-gradient(125deg, rgba(31, 122, 114, 0.92), rgba(21, 36, 42, 0.92));
+  border-radius: 18px;
+  padding: 1.1rem 1.2rem;
+  color: #f3fbf9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.landing-access h2 {
+  font-size: clamp(1.25rem, 2.1vw, 1.7rem);
+  margin: 0 0 0.5rem;
+  line-height: 1.12;
+}
+
+.landing-access .eyebrow {
+  color: rgba(243, 251, 249, 0.82);
+}
+
+.access-steps {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.landing-access .admin-btn {
+  background: #ffffff;
+  color: #11423e;
+  text-decoration: none;
+}
+
+.landing-access .admin-btn:hover {
+  filter: brightness(1);
+}
+
 .login-note {
   margin: -0.15rem 0 0.2rem;
   color: var(--accent);
@@ -537,6 +576,10 @@ textarea:focus-visible {
 .login-card p {
   margin: 0;
   color: var(--ink-soft);
+}
+
+.login-card label {
+  font-size: 0.88rem;
 }
 
 .app-area {
@@ -891,6 +934,10 @@ textarea {
   animation-delay: 340ms;
 }
 
+.landing-access.reveal {
+  animation-delay: 380ms;
+}
+
 @keyframes fadeUp {
   to {
     opacity: 1;
@@ -953,6 +1000,11 @@ footer {
   }
 
   .landing-final-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .landing-access {
     flex-direction: column;
     align-items: flex-start;
   }
