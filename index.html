@@ -24,10 +24,10 @@
       <div class="brand-block">
         <p class="domain">www.simplecoluna.com</p>
         <h1>Simple Coluna</h1>
-        <p class="subtitle">Auxilio educacional para discussão de possíveis lesões cirúrgicas da coluna</p>
+        <p class="subtitle">Plataforma educacional para discussão técnica de possíveis lesões cirúrgicas da coluna</p>
       </div>
       <div class="topbar-actions">
-        <button id="adminToggleBtn" class="admin-btn" type="button">Painel Admin</button>
+        <button id="adminToggleBtn" class="admin-btn hidden" type="button">Painel Admin</button>
         <div class="chip">Versão 0.2</div>
       </div>
     </header>
@@ -35,16 +35,19 @@
     <main>
       <section class="landing-hero" aria-label="apresentação da plataforma">
         <div class="landing-copy">
-          <p class="eyebrow">Portal clínico-educacional</p>
-          <h2>Consulta clara e elegante para possíveis lesões cirúrgicas da coluna.</h2>
+          <p class="eyebrow">Landing page</p>
+          <h2>Simple Coluna é um ambiente educacional para apoiar discussões cirúrgicas em coluna.</h2>
           <p>
-            Uma entrada limpa para acessar a base de conhecimento da Simple Coluna, com busca por região,
-            exploração por hipótese clínica e organização de materiais.
+            Reunimos trilhas de triagem, organização de hipóteses e estrutura técnica para pedidos, em uma experiência
+            objetiva e elegante para equipes clínicas.
+          </p>
+          <p>
+            Nesta área pública você conhece a proposta da plataforma. Os módulos operacionais e os dados internos
+            aparecem somente após autenticação.
           </p>
 
           <div class="landing-actions">
-            <button id="enterPlatformBtn" class="admin-btn" type="button">Entrar na Plataforma</button>
-            <button id="exploreBtn" class="admin-btn secondary" type="button">Ver conteúdo</button>
+            <button id="enterPlatformBtn" class="admin-btn" type="button">Acessar com login</button>
           </div>
         </div>
 
@@ -69,8 +72,8 @@
 
       <section id="loginGate" class="login-gate" aria-label="acesso seguro">
         <div class="login-info">
-          <p class="eyebrow">Prévia da plataforma</p>
-          <h2>Acesso administrativo com visão resumida para novos usuários.</h2>
+          <p class="eyebrow">Acesso seguro</p>
+          <h2>Autenticação para liberar o ambiente interno do Simple Coluna.</h2>
           <p>
             A Simple Coluna organiza triagem clínica educacional, interpretação estruturada de pedidos,
             e geração de texto padronizado para discussão técnica entre equipes.
@@ -115,7 +118,7 @@
         </form>
       </section>
 
-      <section id="appArea" class="app-area">
+      <section id="appArea" class="app-area hidden">
       <section class="decision-hub" aria-label="fluxos de decisão cirúrgica">
         <div class="section-head">
           <h2>Fluxo de decisão cirúrgica</h2>

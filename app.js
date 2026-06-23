@@ -251,7 +251,6 @@ const materialsTableBody = document.querySelector("#materialsTableBody");
 const adminToggleBtn = document.querySelector("#adminToggleBtn");
 const adminSection = document.querySelector("#adminSection");
 const enterPlatformBtn = document.querySelector("#enterPlatformBtn");
-const exploreBtn = document.querySelector("#exploreBtn");
 const loginGate = document.querySelector("#loginGate");
 const loginForm = document.querySelector("#loginForm");
 const loginEmailInput = document.querySelector("#loginEmailInput");
@@ -331,8 +330,10 @@ let latestDoctorLookup = { checked: false, verified: false, source: "nao-consult
 
 function applyAuthState() {
   appArea?.classList.toggle("hidden", !isAuthenticated);
+  loginGate?.classList.toggle("hidden", isAuthenticated);
   if (adminToggleBtn) {
     adminToggleBtn.disabled = !isAuthenticated;
+    adminToggleBtn.classList.toggle("hidden", !isAuthenticated);
   }
 
   if (isAuthenticated && loginFeedback) {
@@ -898,16 +899,13 @@ function bindAdmin() {
 }
 
 function bindLanding() {
-  const scrollTarget = () => {
+  enterPlatformBtn?.addEventListener("click", () => {
     if (isAuthenticated) {
       appArea?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     loginGate?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  enterPlatformBtn?.addEventListener("click", scrollTarget);
-  exploreBtn?.addEventListener("click", scrollTarget);
+  });
 }
 
 function setDecisionMode(mode) {
