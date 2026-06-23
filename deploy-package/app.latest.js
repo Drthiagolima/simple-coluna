@@ -268,6 +268,8 @@ const accessProgressText = document.querySelector("#accessProgressText");
 const accessProgressBar = document.querySelector("#accessProgressBar");
 const accessProgressFill = document.querySelector("#accessProgressFill");
 const accessProgressSteps = document.querySelectorAll("#accessProgressSteps li");
+const internalTabButtons = document.querySelectorAll(".internal-tab-btn");
+const internalTabPanels = document.querySelectorAll(".internal-tab-panel");
 
 const lesionForm = document.querySelector("#lesionForm");
 const editingIdInput = document.querySelector("#editingId");
@@ -1354,6 +1356,29 @@ function evaluatePedido(text) {
   };
 }
 
+function buildAlternativePedido(report) {
+  const missingItems = report.checks.filter((item) => !item.ok).map((item) => item.label);
+  const missingTuss = report.tussFound.length >= 4 ? "" : "Incluir 4 codigos TUSS cirurgicos compativeis com o caso.";
+  const missingCompany = report.hasCompanies ? "" : "Inserir empresa permitida (Stryker, Smith Nephew, Johnson, Zimmer, Medtronic, Satrattner, Handle).";
+  const missingAnexo = report.hasAnexoPhrase ? "" : "Adicionar frase final obrigatoria de anexos comprobatórios.";
+
+  const adjustments = [...missingItems, missingTuss, missingCompany, missingAnexo].filter(Boolean);
+
+  return [
+    "VERSAO ALTERNATIVA SUGERIDA PARA AUDITORIA",
+    "",
+    "Ajustes recomendados:",
+    ...adjustments.map((item) => `- ${item}`),
+    "",
+    "Estrutura minima sugerida:",
+    "- CID-10 principal + procedimento cirurgico proposto.",
+    "- Niveis cirurgicos explicitados.",
+    "- Justificativa clinica com falha de tratamento prévio e escala funcional.",
+    "- Lista de OPME por item, com codigos e objetivo tecnico.",
+    "- Bloco final: OS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO."
+  ].join("\n");
+}
+
 function renderUploadResult(report) {
   const statusClass =
     report.operationalSignal === "verde"
@@ -1377,6 +1402,41 @@ function renderUploadResult(report) {
     <ul>${checklist}</ul>
     <p><strong>Regra da aula:</strong> verde autoriza, amarelo audita, vermelho segunda opiniao/painel.</p>
   `;
+
+  if (!report.approved) {
+    const alternative = buildAlternativePedido(report);
+    const altBlock = document.createElement("div");
+    altBlock.className = "result-actions";
+    altBlock.innerHTML = `
+      <p><strong>Versão alternativa sugerida:</strong></p>
+      <pre>${escapeHtml(alternative)}</pre>
+    `;
+    uploadResult.appendChild(altBlock);
+  }
+}
+
+function setInternalTab(tabId) {
+  internalTabButtons.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tabId);
+  });
+
+  internalTabPanels.forEach((panel) => {
+    panel.classList.toggle("active", panel.id === `internalTab-${tabId}`);
+  });
+}
+
+function bindInternalTabs() {
+  if (!internalTabButtons.length || !internalTabPanels.length) {
+    return;
+  }
+
+  internalTabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setInternalTab(btn.dataset.tab || "build");
+    });
+  });
+
+  setInternalTab("build");
 }
 
 function bindDoctorRegistry() {
@@ -1688,6 +1748,7 @@ async function loadData() {
 function init() {
   bindFocusMode();
   bindAccessProgress();
+  bindInternalTabs();
   loadRequestHistory();
   renderOutcomeRequestOptions();
   renderDoctorRanking();

@@ -695,6 +695,65 @@ textarea:focus-visible {
   gap: 1.2rem;
 }
 
+.internal-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.internal-sidebar {
+  position: sticky;
+  top: 1rem;
+  background: linear-gradient(165deg, #fbf7f1, #efe5d8);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.internal-sidebar h2 {
+  font-size: 1.18rem;
+  margin: 0 0 0.2rem;
+}
+
+.internal-tab-btn {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.62rem 0.72rem;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.internal-tab-btn:hover {
+  border-color: rgba(31, 122, 114, 0.45);
+}
+
+.internal-tab-btn.active {
+  background: rgba(31, 122, 114, 0.12);
+  border-color: rgba(31, 122, 114, 0.5);
+  color: var(--accent);
+}
+
+.internal-content {
+  display: grid;
+}
+
+.internal-tab-panel {
+  display: none;
+}
+
+.internal-tab-panel.active {
+  display: block;
+}
+
 .decision-hub {
   background: linear-gradient(165deg, #fbf7f1, #f2e8dc);
   border: 1px solid var(--line);
@@ -1127,6 +1186,14 @@ footer {
 
   .login-gate {
     grid-template-columns: 1fr;
+  }
+
+  .internal-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .internal-sidebar {
+    position: static;
   }
 
   h1 {

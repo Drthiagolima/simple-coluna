@@ -254,264 +254,243 @@
       </section>
 
       <section id="appArea" class="app-area hidden">
-      <section class="decision-hub" aria-label="fluxos de decisão cirúrgica">
-        <div class="section-head">
-          <h2>Fluxo de decisão cirúrgica</h2>
-          <p>Duas entradas: triagem guiada ou leitura de pedido.</p>
-        </div>
+        <div class="internal-shell" aria-label="navegação de funcionalidades internas">
+          <aside class="internal-sidebar">
+            <h2>Funcionalidades</h2>
+            <button class="internal-tab-btn active" data-tab="build" type="button">
+              Construção de pedido assertivo
+            </button>
+            <button class="internal-tab-btn" data-tab="audit" type="button">Sessão de auditoria</button>
+            <button class="internal-tab-btn" data-tab="ranking" type="button">Ranqueamento dos médicos</button>
+          </aside>
 
-        <div class="request-registry">
-          <div class="section-head">
-            <h3>Cadastro de médico e paciente do pedido</h3>
-            <p>Vincula o pedido cirúrgico ao médico e ao paciente.</p>
+          <div class="internal-content">
+            <section id="internalTab-build" class="internal-tab-panel active" aria-label="construcao de pedido">
+              <section class="decision-hub" aria-label="fluxos de decisão cirúrgica">
+                <div class="section-head">
+                  <h2>Construção de pedido assertivo</h2>
+                  <p>Passo a passo com queixas do paciente, quadro clínico e algoritmo técnico.</p>
+                </div>
+
+                <div class="request-registry">
+                  <div class="section-head">
+                    <h3>Cadastro de médico e paciente do pedido</h3>
+                    <p>Vincula o pedido cirúrgico ao médico e ao paciente.</p>
+                  </div>
+                  <div class="decision-grid">
+                    <label>
+                      Nome do médico
+                      <input id="doctorNameInput" type="text" placeholder="Ex.: Dr. Thiago Lima" />
+                    </label>
+
+                    <label>
+                      CRM
+                      <input id="doctorCrmInput" type="text" placeholder="Ex.: 123456" />
+                    </label>
+
+                    <label>
+                      UF do CRM
+                      <select id="doctorUfSelect">
+                        <option value="">Selecione</option>
+                        <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                        <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                        <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                        <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                        <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                        <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                        <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                        <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                        <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                      </select>
+                    </label>
+
+                    <label>
+                      Nome do paciente
+                      <input id="patientNameInput" type="text" placeholder="Ex.: João da Silva" />
+                    </label>
+
+                    <label>
+                      Documento do paciente
+                      <input id="patientDocumentInput" type="text" placeholder="Ex.: CPF / Prontuário" />
+                    </label>
+
+                    <label>
+                      Data da cirurgia
+                      <input id="surgeryDateInput" type="date" />
+                    </label>
+                  </div>
+
+                  <div class="decision-actions">
+                    <button id="checkCfmBtn" class="admin-btn secondary" type="button">Buscar CRM no CFM</button>
+                    <button id="openCfmBtn" class="admin-btn secondary" type="button">Abrir busca CFM</button>
+                  </div>
+                  <p id="cfmLookupFeedback" class="feedback"></p>
+                </div>
+
+                <div id="questionnairePanel" class="decision-panel">
+                  <div class="decision-grid">
+                    <label>
+                      Tipo de cirurgia
+                      <select id="surgeryTypeSelect">
+                        <option value="">Selecione</option>
+                        <option value="cervical">Artrodese cervical (via anterior/póstero-lateral)</option>
+                        <option value="lombar">Artrodese lombar (via anterior/póstero-lateral)</option>
+                        <option value="endoscopica">Cirurgia endoscópica de coluna</option>
+                      </select>
+                    </label>
+
+                    <label>
+                      Número de níveis
+                      <select id="levelsSelect">
+                        <option value="1">1 nível</option>
+                        <option value="2">2 níveis</option>
+                        <option value="3">3 níveis</option>
+                      </select>
+                    </label>
+
+                    <label class="check-row"><input id="redFlagNeuroInput" type="checkbox" /> Déficit neurológico progressivo</label>
+                    <label class="check-row"><input id="redFlagCompressionInput" type="checkbox" /> Sinais de compressão medular/cauda equina</label>
+                    <label class="check-row"><input id="yellowPainInput" type="checkbox" /> Dor intensa persistente (EVA alta)</label>
+                    <label class="check-row"><input id="yellowFailureInput" type="checkbox" /> Falha do tratamento conservador documentada</label>
+                    <label class="check-row"><input id="imageProofInput" type="checkbox" /> Comprovação por imagem disponível</label>
+                    <label class="check-row"><input id="classHighMorbidityInput" type="checkbox" /> Contexto de alta morbimortalidade / risco clínico elevado</label>
+                    <label class="check-row"><input id="classComplexAnatomyInput" type="checkbox" /> Anatomia 3D complexa com risco neurovascular</label>
+                    <label class="check-row"><input id="classNeedPrecisionInput" type="checkbox" /> Necessidade de redução/anatômica de alta precisão</label>
+                    <label class="check-row"><input id="classConventionalLimitInput" type="checkbox" /> Limitação importante da técnica convencional</label>
+
+                    <label>
+                      Limitações funcionais (linguagem clínica)
+                      <textarea id="functionalLimitationsInput" rows="3" placeholder="Ex.: Limitação dolorosa à flexão de quadril; intolerância à deambulação >100 m por dor."></textarea>
+                    </label>
+
+                    <label>
+                      CID-10 principal
+                      <input id="cidInput" type="text" placeholder="Ex.: M50.1" />
+                    </label>
+
+                    <label>
+                      Patologia principal
+                      <input id="mainDiagnosisInput" type="text" placeholder="Ex.: Hérnia de disco lombar com radiculopatia" />
+                    </label>
+
+                    <label>
+                      Objetivo tecnológico principal
+                      <select id="techGoalSelect">
+                        <option value="">Selecione</option>
+                        <option value="precisao">Aumentar precisão da execução</option>
+                        <option value="planejamento">Aprimorar planejamento pré-operatório</option>
+                        <option value="tempo">Reduzir tempo cirúrgico e trauma</option>
+                        <option value="formacao">Apoio a formação/simulação da equipe</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="decision-actions">
+                    <button id="generateDecisionBtn" class="admin-btn" type="button">Gerar decisão e pedido padronizado</button>
+                  </div>
+
+                  <div id="decisionResult" class="result-box" aria-live="polite"></div>
+                </div>
+
+                <section class="alert-box" aria-label="aviso importante">
+                  <h2>Aviso importante</h2>
+                  <p>
+                    Esta ferramenta tem finalidade educacional e não substitui avaliação clínica, exame físico,
+                    exames de imagem e decisão médica especializada.
+                  </p>
+                </section>
+              </section>
+            </section>
+
+            <section id="internalTab-audit" class="internal-tab-panel" aria-label="sessao de auditoria">
+              <section class="ranking-window" aria-label="auditoria documental">
+                <div class="section-head">
+                  <h2>Sessão de auditoria</h2>
+                  <p>
+                    Upload do documento para avaliar diretrizes e algoritmos de códigos TUSS, OPME e indicação cirúrgica.
+                  </p>
+                </div>
+
+                <div id="uploadPanel" class="decision-panel">
+                  <div class="decision-grid">
+                    <label>
+                      Upload do pedido (txt, doc, docx, pdf)
+                      <input id="pedidoFileInput" type="file" accept=".txt,.md,.doc,.docx,.pdf" />
+                    </label>
+
+                    <label>
+                      Texto do pedido (opcional para complementar)
+                      <textarea id="pedidoTextInput" rows="10" placeholder="Cole o texto integral do pedido cirúrgico aqui."></textarea>
+                    </label>
+                  </div>
+
+                  <div class="decision-actions">
+                    <button id="analyzePedidoBtn" class="admin-btn" type="button">Auditar documento</button>
+                  </div>
+
+                  <div id="uploadResult" class="result-box" aria-live="polite"></div>
+                </div>
+              </section>
+            </section>
+
+            <section id="internalTab-ranking" class="internal-tab-panel" aria-label="ranqueamento de medicos">
+              <section class="ranking-window" aria-label="ranking dos medicos">
+                <div class="section-head">
+                  <h2>Ranqueamento dos médicos</h2>
+                  <p>Pontuação por adesão TUSS/OPME e complicações cirúrgicas.</p>
+                </div>
+
+                <div class="ranking-grid">
+                  <div class="admin-card">
+                    <h3>Registrar desfecho pós-operatório</h3>
+                    <form id="outcomeForm" class="admin-form-grid">
+                      <label>
+                        Pedido vinculado
+                        <select id="outcomeRequestSelect">
+                          <option value="">Selecione um pedido registrado</option>
+                        </select>
+                      </label>
+
+                      <label class="check-row"><input id="negTuss30715270" type="checkbox" /> Retirada de material de síntese (30715270)</label>
+                      <label class="check-row"><input id="negTuss30715210" type="checkbox" /> Osteomielite (30715210)</label>
+                      <label class="check-row"><input id="negTuss30715199" type="checkbox" /> Laminectomia para abscesso (30715199)</label>
+                      <label class="check-row"><input id="negTuss30715261" type="checkbox" /> Retirada de corpo estranho (30715261)</label>
+                      <label class="check-row"><input id="negTuss31401260" type="checkbox" /> Fístula liquórica (31401260)</label>
+
+                      <label>
+                        Data de reoperação (se houver)
+                        <input id="reoperationDateInput" type="date" />
+                      </label>
+
+                      <div class="admin-actions">
+                        <button class="admin-btn" type="submit">Salvar desfecho no ranking</button>
+                      </div>
+                    </form>
+                    <p id="outcomeFeedback" class="feedback"></p>
+                  </div>
+
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Médico</th>
+                          <th>CRM</th>
+                          <th>Pedidos</th>
+                          <th>Adesão TUSS</th>
+                          <th>Adesão OPME</th>
+                          <th>Complicações</th>
+                          <th>Reop. &gt; 10 dias</th>
+                          <th>Score</th>
+                        </tr>
+                      </thead>
+                      <tbody id="doctorRankingTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            </section>
           </div>
-          <div class="decision-grid">
-            <label>
-              Nome do médico
-              <input id="doctorNameInput" type="text" placeholder="Ex.: Dr. Thiago Lima" />
-            </label>
-
-            <label>
-              CRM
-              <input id="doctorCrmInput" type="text" placeholder="Ex.: 123456" />
-            </label>
-
-            <label>
-              UF do CRM
-              <select id="doctorUfSelect">
-                <option value="">Selecione</option>
-                <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
-                <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
-                <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
-                <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-                <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
-                <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
-                <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
-                <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-                <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-              </select>
-            </label>
-
-            <label>
-              Nome do paciente
-              <input id="patientNameInput" type="text" placeholder="Ex.: João da Silva" />
-            </label>
-
-            <label>
-              Documento do paciente
-              <input id="patientDocumentInput" type="text" placeholder="Ex.: CPF / Prontuário" />
-            </label>
-
-            <label>
-              Data da cirurgia
-              <input id="surgeryDateInput" type="date" />
-            </label>
-          </div>
-
-          <div class="decision-actions">
-            <button id="checkCfmBtn" class="admin-btn secondary" type="button">Buscar CRM no CFM</button>
-            <button id="openCfmBtn" class="admin-btn secondary" type="button">Abrir busca CFM</button>
-          </div>
-          <p id="cfmLookupFeedback" class="feedback"></p>
         </div>
-
-        <div class="decision-switch">
-          <button id="modeQuestionnaireBtn" class="admin-btn" type="button">Opção 1: Triagem por perguntas</button>
-          <button id="modeUploadBtn" class="admin-btn secondary" type="button">Opção 2: Analisar pedido por arquivo</button>
-        </div>
-
-        <div id="questionnairePanel" class="decision-panel">
-          <div class="decision-grid">
-            <label>
-              Tipo de cirurgia
-              <select id="surgeryTypeSelect">
-                <option value="">Selecione</option>
-                <option value="cervical">Artrodese cervical (via anterior/póstero-lateral)</option>
-                <option value="lombar">Artrodese lombar (via anterior/póstero-lateral)</option>
-                <option value="endoscopica">Cirurgia endoscópica de coluna</option>
-              </select>
-            </label>
-
-            <label>
-              Número de níveis
-              <select id="levelsSelect">
-                <option value="1">1 nível</option>
-                <option value="2">2 níveis</option>
-                <option value="3">3 níveis</option>
-              </select>
-            </label>
-
-            <label class="check-row"><input id="redFlagNeuroInput" type="checkbox" /> Déficit neurológico progressivo</label>
-            <label class="check-row"><input id="redFlagCompressionInput" type="checkbox" /> Sinais de compressão medular/cauda equina</label>
-            <label class="check-row"><input id="yellowPainInput" type="checkbox" /> Dor intensa persistente (EVA alta)</label>
-            <label class="check-row"><input id="yellowFailureInput" type="checkbox" /> Falha do tratamento conservador documentada</label>
-            <label class="check-row"><input id="imageProofInput" type="checkbox" /> Comprovação por imagem disponível</label>
-            <label class="check-row"><input id="classHighMorbidityInput" type="checkbox" /> Contexto de alta morbimortalidade / risco clínico elevado</label>
-            <label class="check-row"><input id="classComplexAnatomyInput" type="checkbox" /> Anatomia 3D complexa com risco neurovascular</label>
-            <label class="check-row"><input id="classNeedPrecisionInput" type="checkbox" /> Necessidade de redução/anatômica de alta precisão</label>
-            <label class="check-row"><input id="classConventionalLimitInput" type="checkbox" /> Limitação importante da técnica convencional</label>
-
-            <label>
-              Limitações funcionais (linguagem clínica)
-              <textarea id="functionalLimitationsInput" rows="3" placeholder="Ex.: Limitação dolorosa à flexão de quadril; intolerância à deambulação >100 m por dor."></textarea>
-            </label>
-
-            <label>
-              CID-10 principal
-              <input id="cidInput" type="text" placeholder="Ex.: M50.1" />
-            </label>
-
-            <label>
-              Patologia principal
-              <input id="mainDiagnosisInput" type="text" placeholder="Ex.: Hérnia de disco lombar com radiculopatia" />
-            </label>
-
-            <label>
-              Objetivo tecnológico principal
-              <select id="techGoalSelect">
-                <option value="">Selecione</option>
-                <option value="precisao">Aumentar precisão da execução</option>
-                <option value="planejamento">Aprimorar planejamento pré-operatório</option>
-                <option value="tempo">Reduzir tempo cirúrgico e trauma</option>
-                <option value="formacao">Apoio a formação/simulação da equipe</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="decision-actions">
-            <button id="generateDecisionBtn" class="admin-btn" type="button">Gerar decisão e pedido padronizado</button>
-          </div>
-
-          <div id="decisionResult" class="result-box" aria-live="polite"></div>
-        </div>
-
-        <div id="uploadPanel" class="decision-panel hidden">
-          <div class="decision-grid">
-            <label>
-              Upload do pedido (txt, doc, docx, pdf)
-              <input id="pedidoFileInput" type="file" accept=".txt,.md,.doc,.docx,.pdf" />
-            </label>
-
-            <label>
-              Texto do pedido (opcional para complementar)
-              <textarea id="pedidoTextInput" rows="10" placeholder="Cole o texto integral do pedido cirúrgico aqui."></textarea>
-            </label>
-          </div>
-
-          <div class="decision-actions">
-            <button id="analyzePedidoBtn" class="admin-btn" type="button">Analisar pedido e classificar liberação</button>
-          </div>
-
-          <div id="uploadResult" class="result-box" aria-live="polite"></div>
-        </div>
-      </section>
-
-      <section class="ranking-window" aria-label="ranking dos medicos">
-        <div class="section-head">
-          <h2>Janela de ranking dos médicos</h2>
-          <p>Pontuação por adesão TUSS/OPME e complicações cirúrgicas.</p>
-        </div>
-
-        <div class="ranking-grid">
-          <div class="admin-card">
-            <h3>Registrar desfecho pós-operatório</h3>
-            <form id="outcomeForm" class="admin-form-grid">
-              <label>
-                Pedido vinculado
-                <select id="outcomeRequestSelect">
-                  <option value="">Selecione um pedido registrado</option>
-                </select>
-              </label>
-
-              <label class="check-row"><input id="negTuss30715270" type="checkbox" /> Retirada de material de síntese (30715270)</label>
-              <label class="check-row"><input id="negTuss30715210" type="checkbox" /> Osteomielite (30715210)</label>
-              <label class="check-row"><input id="negTuss30715199" type="checkbox" /> Laminectomia para abscesso (30715199)</label>
-              <label class="check-row"><input id="negTuss30715261" type="checkbox" /> Retirada de corpo estranho (30715261)</label>
-              <label class="check-row"><input id="negTuss31401260" type="checkbox" /> Fístula liquórica (31401260)</label>
-
-              <label>
-                Data de reoperação (se houver)
-                <input id="reoperationDateInput" type="date" />
-              </label>
-
-              <div class="admin-actions">
-                <button class="admin-btn" type="submit">Salvar desfecho no ranking</button>
-              </div>
-            </form>
-            <p id="outcomeFeedback" class="feedback"></p>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Médico</th>
-                  <th>CRM</th>
-                  <th>Pedidos</th>
-                  <th>Adesão TUSS</th>
-                  <th>Adesão OPME</th>
-                  <th>Complicações</th>
-                  <th>Reop. &gt; 10 dias</th>
-                  <th>Score</th>
-                </tr>
-              </thead>
-              <tbody id="doctorRankingTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-      <section class="alert-box" aria-label="aviso importante">
-        <h2>Aviso importante</h2>
-        <p>
-          Esta ferramenta tem finalidade educacional e não substitui avaliação clínica, exame físico,
-          exames de imagem e decisão médica especializada.
-        </p>
-      </section>
-
-      <section class="controls" aria-label="filtros">
-        <label>
-          Buscar lesão
-          <input id="searchInput" type="search" placeholder="Ex: hérnia lombar" />
-        </label>
-
-        <label>
-          Região
-          <select id="regionFilter">
-            <option value="">Todas</option>
-            <option value="cervical">Cervical</option>
-            <option value="toracica">Torácica</option>
-            <option value="lombar">Lombar</option>
-          </select>
-        </label>
-      </section>
-
-      <section>
-        <div class="section-head">
-          <h2>Possíveis lesões</h2>
-          <p id="resultCount">0 resultados</p>
-        </div>
-        <div id="lesionGrid" class="lesion-grid" aria-live="polite"></div>
-      </section>
-
-      <section>
-        <div class="section-head">
-          <h2>Materiais e códigos de referência</h2>
-          <p>Selecione um cartão para destacar os itens relacionados.</p>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Lesão</th>
-                <th>Material</th>
-                <th>Código</th>
-                <th>Tipo</th>
-              </tr>
-            </thead>
-            <tbody id="materialsTableBody"></tbody>
-          </table>
-        </div>
-      </section>
 
       <section id="adminSection" class="admin-section hidden" aria-label="painel administrativo">
         <div class="section-head">
@@ -588,7 +567,6 @@
             </table>
           </div>
         </div>
-      </section>
       </section>
     </main>
 
