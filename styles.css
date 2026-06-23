@@ -359,6 +359,76 @@ main {
   font-size: 0.9rem;
 }
 
+.landing-value {
+  background: linear-gradient(165deg, rgba(251, 247, 241, 0.95), rgba(244, 236, 226, 0.85));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.landing-value-head {
+  margin: 0;
+}
+
+.value-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.value-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(29, 71, 66, 0.12);
+  border-radius: 14px;
+  padding: 0.9rem;
+}
+
+.value-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.value-card p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.landing-final-cta {
+  background: linear-gradient(125deg, rgba(21, 36, 42, 0.93), rgba(31, 122, 114, 0.9));
+  border-radius: 18px;
+  padding: 1.15rem 1.2rem;
+  color: #f5fbfa;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.landing-final-cta h2 {
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.landing-final-cta .eyebrow {
+  color: rgba(245, 251, 250, 0.85);
+}
+
+.landing-final-cta .admin-btn {
+  background: #f5fbfa;
+  color: #18363a;
+  text-decoration: none;
+}
+
+.landing-final-cta .admin-btn:hover {
+  filter: brightness(1);
+}
+
 .login-gate {
   display: grid;
   grid-template-columns: 1.2fr 0.85fr;
@@ -751,6 +821,14 @@ textarea {
   animation-delay: 220ms;
 }
 
+.landing-value.reveal {
+  animation-delay: 250ms;
+}
+
+.landing-final-cta.reveal {
+  animation-delay: 300ms;
+}
+
 @keyframes fadeUp {
   to {
     opacity: 1;
@@ -806,6 +884,15 @@ footer {
 
   .landing-trust {
     grid-template-columns: 1fr;
+  }
+
+  .value-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-final-cta {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .login-gate {
