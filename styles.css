@@ -811,6 +811,19 @@ textarea:focus-visible {
   align-items: start;
 }
 
+#internalTab-ranking .ranking-grid {
+  grid-template-columns: 1fr;
+}
+
+#internalTab-ranking table {
+  min-width: 0;
+}
+
+#internalTab-ranking th,
+#internalTab-ranking td {
+  white-space: normal;
+}
+
 .decision-switch {
   display: flex;
   flex-wrap: wrap;

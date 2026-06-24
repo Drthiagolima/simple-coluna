@@ -1,7 +1,7 @@
 ﻿const STORAGE_KEY_LESIONS = "simplecoluna.lesoes.v1";
 const SESSION_KEY_AUTH = "simplecoluna.session.auth.v1";
-const AUTH_LOGIN = "admistracao@simplecoluna.com";
-const AUTH_LOGIN_ALIASES = ["admistracao@simplecoluna.com", "administracao@simplecoluna.com"];
+const AUTH_LOGIN = "administracao@simplecoluna.com";
+const AUTH_LOGIN_ALIASES = ["administracao@simplecoluna.com", "admistracao@simplecoluna.com"];
 const AUTH_PASSWORD = "simplecoluna";
 const STORAGE_KEY_REQUEST_HISTORY = "simplecoluna.requests.v1";
 const STORAGE_KEY_FOCUS_MODE = "simplecoluna.landing.focus.v1";
@@ -412,7 +412,7 @@ function bindLoginGate() {
     if (!isValidLogin(email, password)) {
       isAuthenticated = false;
       sessionStorage.removeItem(SESSION_KEY_AUTH);
-      loginFeedback.textContent = "Credenciais invÃ¡lidas. Verifique login e senha.";
+      loginFeedback.textContent = "Credenciais inválidas. Verifique login e senha.";
       loginFeedback.classList.add("error");
       applyAuthState();
       return;
@@ -512,7 +512,7 @@ function getRequestContext() {
 function validateRequestContext() {
   const context = getRequestContext();
   const missing = [];
-  if (!context.doctor.name) missing.push("nome do mÃ©dico");
+  if (!context.doctor.name) missing.push("nome do médico");
   if (!context.doctor.crm) missing.push("CRM");
   if (!context.doctor.uf) missing.push("UF do CRM");
   if (!context.patient.name) missing.push("nome do paciente");
@@ -887,9 +887,9 @@ function parseMateriais(text) {
     .map((line) => {
       const [item, codigo, tipo] = line.split("|").map((chunk) => chunk.trim());
       return {
-        item: item || "Material nao informado",
+        item: item || "Material não informado",
         codigo: codigo || "SEM-CODIGO",
-        tipo: tipo || "Nao definido"
+        tipo: tipo || "Não definido"
       };
     });
 }
@@ -1235,13 +1235,13 @@ function buildSurgeryRequestTemplate(payload) {
   const tushList = payload.tuss
     .map(
       (item) =>
-        `â€¢ ${item.code} â€” ${item.title} â€” Aplicacao: ${item.application}`
+        `- ${item.code} - ${item.title} - Aplicacao: ${item.application}`
     )
     .join("\n");
 
-  const opmeList = payload.opme.map((item) => `â€¢ ${item}`).join("\n");
+  const opmeList = payload.opme.map((item) => `- ${item}`).join("\n");
 
-  return `SOLICITACAO DE CIRURGIA\nMEDICO SOLICITANTE: ${payload.doctorName} | CRM ${payload.doctorCrm}/${payload.doctorUf}\nPACIENTE: ${payload.patientName} | DOCUMENTO: ${payload.patientDocument}\nDATA DA CIRURGIA: ${payload.surgeryDate}\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\nâ€¢ ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\nâ€¢ ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\nâ€¢ Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
+  return `SOLICITACAO DE CIRURGIA\nMEDICO SOLICITANTE: ${payload.doctorName} | CRM ${payload.doctorCrm}/${payload.doctorUf}\nPACIENTE: ${payload.patientName} | DOCUMENTO: ${payload.patientDocument}\nDATA DA CIRURGIA: ${payload.surgeryDate}\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\n- ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\n- ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\n- Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
 }
 
 function renderQuestionnaireResult(result) {
@@ -1249,7 +1249,7 @@ function renderQuestionnaireResult(result) {
   latestRequestFileName = `solicitacao-${toFileSafe(result.protocol.label)}-${result.cid || "cid"}.txt`;
   const reasonsHtml = result.urgency.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("");
   const tussHtml = result.tuss
-    .map((item) => `<li><strong>${escapeHtml(item.code)}</strong> â€” ${escapeHtml(item.title)}</li>`)
+    .map((item) => `<li><strong>${escapeHtml(item.code)}</strong> - ${escapeHtml(item.title)}</li>`)
     .join("");
   const opmeHtml = result.opme.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   const techHtml = result.technologyRecommendations
@@ -1278,7 +1278,7 @@ function renderQuestionnaireResult(result) {
     <p><strong>Tecnologia recomendada (aula):</strong></p>
     <ul>${techHtml}</ul>
     <div class="result-actions">
-      <button id="copyRequestBtn" class="admin-btn secondary" type="button">Copiar solicitaÃ§Ã£o</button>
+      <button id="copyRequestBtn" class="admin-btn secondary" type="button">Copiar solicitação</button>
       <button id="downloadRequestBtn" class="admin-btn secondary" type="button">Baixar .txt</button>
     </div>
     <p><strong>Pedido padronizado:</strong></p>
@@ -1472,7 +1472,7 @@ function evaluatePedido(text) {
 
   return {
     approved,
-    protocolLabel: protocol?.label || "Nao identificado automaticamente",
+    protocolLabel: protocol?.label || "Não identificado automaticamente",
     cidFound,
     tussFound,
     checks,
@@ -1487,7 +1487,7 @@ function buildAlternativePedido(report) {
   const missingItems = report.checks.filter((item) => !item.ok).map((item) => item.label);
   const missingTuss = report.tussFound.length >= 4 ? "" : "Incluir 4 codigos TUSS cirurgicos compativeis com o caso.";
   const missingCompany = report.hasCompanies ? "" : "Inserir empresa permitida (Stryker, Smith Nephew, Johnson, Zimmer, Medtronic, Satrattner, Handle).";
-  const missingAnexo = report.hasAnexoPhrase ? "" : "Adicionar frase final obrigatoria de anexos comprobatÃ³rios.";
+  const missingAnexo = report.hasAnexoPhrase ? "" : "Adicionar frase final obrigatoria de anexos comprobatórios.";
 
   const adjustments = [...missingItems, missingTuss, missingCompany, missingAnexo].filter(Boolean);
 
@@ -1500,7 +1500,7 @@ function buildAlternativePedido(report) {
     "Estrutura minima sugerida:",
     "- CID-10 principal + procedimento cirurgico proposto.",
     "- Niveis cirurgicos explicitados.",
-    "- Justificativa clinica com falha de tratamento prÃ©vio e escala funcional.",
+    "- Justificativa clinica com falha de tratamento prévio e escala funcional.",
     "- Lista de OPME por item, com codigos e objetivo tecnico.",
     "- Bloco final: OS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO."
   ].join("\n");
@@ -1535,7 +1535,7 @@ function renderUploadResult(report) {
     const altBlock = document.createElement("div");
     altBlock.className = "result-actions";
     altBlock.innerHTML = `
-      <p><strong>VersÃ£o alternativa sugerida:</strong></p>
+      <p><strong>Versão alternativa sugerida:</strong></p>
       <pre>${escapeHtml(alternative)}</pre>
     `;
     uploadResult.appendChild(altBlock);
@@ -1643,7 +1643,7 @@ function findDoctorProfileFromHistory(crm, uf) {
 
   return {
     name: firstNonEmpty(names, `CRM ${crm}/${uf}`),
-    specialty: firstNonEmpty(specialties, "Nao informado"),
+    specialty: firstNonEmpty(specialties, "Não informado"),
     status: firstNonEmpty(statuses, "Ativo"),
     source: "historico-local"
   };
@@ -1692,7 +1692,7 @@ function bindDoctorRegistry() {
         doctorNameInput.value = `CRM ${crm}/${uf}`;
       }
       if (doctorSpecialtyInput) {
-        doctorSpecialtyInput.value = "Nao informado";
+        doctorSpecialtyInput.value = "Não informado";
       }
       if (doctorStatusInput) {
         doctorStatusInput.value = "Verificacao pendente";
@@ -1710,7 +1710,7 @@ function bindDoctorRegistry() {
       message:
         profile.source === "historico-local"
           ? "Dados preenchidos pelo historico local de pedidos/documentos."
-          : "Dados do medico preenchidos automaticamente a partir da busca no CFM."
+          : "Dados do médico preenchidos automaticamente a partir da busca no CFM."
     };
     updateFeedback(latestDoctorLookup.message, false);
   });
@@ -1771,7 +1771,7 @@ function registerUploadRequest(report, text) {
   const context = getRequestContext();
   if (!context.doctor.crm || !context.doctor.uf) {
     uploadResult.innerHTML =
-      "<p>NÃ£o foi possÃ­vel ranquear: informe CRM e UF do mÃ©dico (ou inclua no texto do pedido).</p>";
+      "<p>Não foi possível ranquear: informe CRM e UF do médico (ou inclua no texto do pedido).</p>";
     return false;
   }
 
@@ -1783,7 +1783,7 @@ function registerUploadRequest(report, text) {
   }
 
   if (!context.patient.name) {
-    context.patient.name = "Paciente nÃ£o informado";
+    context.patient.name = "Paciente não informado";
   }
 
   if (!context.patient.document) {
@@ -1852,7 +1852,7 @@ function bindRankingWindow() {
     const requestId = outcomeRequestSelect?.value || "";
     const entry = requestHistory.find((item) => item.id === requestId);
     if (!entry) {
-      outcomeFeedback.textContent = "Selecione um pedido vÃ¡lido para registrar o desfecho.";
+      outcomeFeedback.textContent = "Selecione um pedido válido para registrar o desfecho.";
       outcomeFeedback.classList.add("error");
       return;
     }
@@ -1878,8 +1878,8 @@ function bindRankingWindow() {
     renderDoctorRanking();
 
     outcomeFeedback.textContent = reoperationUnder90
-      ? "Desfecho salvo com alerta de reoperaÃ§Ã£o em intervalo superior a 10 dias."
-      : "Desfecho salvo no ranking mÃ©dico.";
+      ? "Desfecho salvo com alerta de reoperação em intervalo superior a 10 dias."
+      : "Desfecho salvo no ranking médico.";
     outcomeFeedback.classList.remove("error");
   });
 }
@@ -1973,12 +1973,12 @@ function bindDecisionHub() {
         await navigator.clipboard.writeText(latestRequestTemplate);
         btn.textContent = "Copiado";
         setTimeout(() => {
-          btn.textContent = "Copiar solicitaÃ§Ã£o";
+          btn.textContent = "Copiar solicitação";
         }, 1500);
       } catch {
         btn.textContent = "Falha ao copiar";
         setTimeout(() => {
-          btn.textContent = "Copiar solicitaÃ§Ã£o";
+          btn.textContent = "Copiar solicitação";
         }, 1500);
       }
       return;
@@ -2055,6 +2055,8 @@ function init() {
 }
 
 init();
+
+
 
 
 
