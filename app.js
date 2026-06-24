@@ -8,6 +8,7 @@ const STORAGE_KEY_FOCUS_MODE = "simplecoluna.landing.focus.v1";
 const STORAGE_KEY_ACCESS_PROGRESS = "simplecoluna.landing.access-progress.v1";
 const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261", "31401260"];
 const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
+const CFM_PROXY_BASE_URL = "https://r.jina.ai/http://portal.cfm.org.br/busca-medicos/";
 const SAMPLE_DOCTOR_RANKING = [
   {
     doctorName: "Dra. Carla Fernandes",
@@ -1576,13 +1577,20 @@ function parseDoctorProfileFromCfmText(text, crm, uf) {
   const specialtyMatch = source.match(/Especialidade(?: Registrada)?\s*[:\-]\s*([^\n\r|]{3,120})/i);
   const statusMatch = source.match(/Situa[cç][aã]o(?: da Inscri[cç][aã]o)?\s*[:\-]\s*([^\n\r|]{3,80})/i);
 
-  if (!crmUfRegex.test(source) && !nameMatch) {
+  const clean = (value) =>
+    String(value || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const isLikelyDoctorName = (value) => /[A-Za-zÀ-ÿ]{3,}/.test(value) && !/[<>]/.test(value);
+  const parsedName = clean(nameMatch?.[1] || "");
+  if (!crmUfRegex.test(source) && !isLikelyDoctorName(parsedName)) {
     return null;
   }
 
-  const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
   return {
-    name: clean(nameMatch?.[1] || ""),
+    name: isLikelyDoctorName(parsedName) ? parsedName : "",
     specialty: clean(specialtyMatch?.[1] || "Não informado"),
     status: clean(statusMatch?.[1] || "Ativo")
   };
@@ -1590,20 +1598,41 @@ function parseDoctorProfileFromCfmText(text, crm, uf) {
 
 async function fetchDoctorProfileFromCfm(crm, uf) {
   const directUrl = buildCfmLookupUrl(crm, uf);
-  const proxyUrl = `https://r.jina.ai/http://portal.cfm.org.br/busca-medicos/?crm=${encodeURIComponent(crm)}&uf=${encodeURIComponent(uf)}`;
+  const proxyUrl = `${CFM_PROXY_BASE_URL}?crm=${encodeURIComponent(crm)}&uf=${encodeURIComponent(uf)}`;
   const attempts = [
     { url: directUrl, source: "cfm-direto" },
     { url: proxyUrl, source: "cfm-proxy" }
   ];
 
+  const fetchTextWithTimeout = async (url) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+        headers: {
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      });
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.text();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   for (const attempt of attempts) {
     try {
-      const response = await fetch(attempt.url, { method: "GET", cache: "no-store" });
-      if (!response.ok) {
+      const text = await fetchTextWithTimeout(attempt.url);
+      if (!text) {
         continue;
       }
 
-      const text = await response.text();
       const profile = parseDoctorProfileFromCfmText(text, crm, uf);
       if (profile) {
         return { ...profile, source: attempt.source };
