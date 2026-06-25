@@ -2136,6 +2136,52 @@ async function extractTextFromPdf(buffer) {
     pages.push(lines.join("\n"));
   }
 
+  const selectableText = sanitizeExtractedText(pages.join("\n\n"));
+  if (hasSufficientExtractedText(selectableText)) {
+    return selectableText;
+  }
+
+  const ocrText = await extractTextFromPdfWithOcr(pdf);
+  if (hasSufficientExtractedText(ocrText)) {
+    return ocrText;
+  }
+
+  return selectableText || ocrText;
+}
+
+async function extractTextFromPdfWithOcr(pdf) {
+  if (!window.Tesseract || typeof window.Tesseract.recognize !== "function") {
+    return "";
+  }
+
+  const maxPages = Math.min(pdf.numPages, 5);
+  const pages = [];
+
+  for (let pageIndex = 1; pageIndex <= maxPages; pageIndex += 1) {
+    const page = await pdf.getPage(pageIndex);
+    const viewport = page.getViewport({ scale: 2 });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      continue;
+    }
+
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    const result = await window.Tesseract.recognize(canvas, "por+eng", {
+      logger: () => {}
+    });
+
+    pages.push(sanitizeExtractedText(result?.data?.text || ""));
+    const joined = sanitizeExtractedText(pages.join("\n\n"));
+    if (hasSufficientExtractedText(joined)) {
+      return joined;
+    }
+  }
+
   return sanitizeExtractedText(pages.join("\n\n"));
 }
 
@@ -2351,6 +2397,7 @@ function init() {
 }
 
 init();
+
 
 
 
