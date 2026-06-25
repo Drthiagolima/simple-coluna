@@ -316,6 +316,8 @@ const uploadPanel = document.querySelector("#uploadPanel");
 
 const surgeryTypeSelect = document.querySelector("#surgeryTypeSelect");
 const levelsSelect = document.querySelector("#levelsSelect");
+const surgeryTypeChoices = Array.from(document.querySelectorAll("input[name='surgeryTypeChoice']"));
+const surgeryLevelChoices = Array.from(document.querySelectorAll("input[name='surgeryLevelChoice']"));
 const redFlagNeuroInput = document.querySelector("#redFlagNeuroInput");
 const redFlagCompressionInput = document.querySelector("#redFlagCompressionInput");
 const yellowPainInput = document.querySelector("#yellowPainInput");
@@ -1371,6 +1373,76 @@ function extractTussCodes(text) {
   return [...new Set(found)].filter((code) => ALL_VALID_TUSS.has(code));
 }
 
+function extractAnyTussCodes(text) {
+  const found = text.match(/\b\d{8}\b/g) || [];
+  return [...new Set(found)];
+
+}
+
+function extractOpmeCodes(text) {
+  const found = text.match(/\bOPME-[A-Z]{2,3}-\d{3}\b/gi) || [];
+  return [...new Set(found.map((item) => item.toUpperCase()))];
+}
+
+function detectLevelsFromText(text) {
+  const explicit = text.match(/\b([1-3])\s*nive?is?\b/i);
+  if (explicit) {
+    return Number(explicit[1]);
+  }
+
+  const single = text.match(/\b([1-3])\s*nivel\b/i);
+  if (single) {
+    return Number(single[1]);
+  }
+
+  return 1;
+}
+
+function getExpectedOpmeCodePrefixes(protocol) {
+  if (protocol === SURGERY_PROTOCOLS.cervical) return ["OPME-CV"];
+  if (protocol === SURGERY_PROTOCOLS.lombar) return ["OPME-LB", "OPME-TL"];
+  if (protocol === SURGERY_PROTOCOLS.endoscopica) return ["OPME-LB"];
+  return [];
+}
+
+function hasAnatomicalConflict(protocol, normalizedContent) {
+  if (!protocol) return false;
+  if (protocol === SURGERY_PROTOCOLS.cervical) {
+    return normalizedContent.includes("lombar") && !normalizedContent.includes("cervical");
+  }
+  if (protocol === SURGERY_PROTOCOLS.lombar) {
+    return normalizedContent.includes("cervical") && !normalizedContent.includes("lombar");
+  }
+  return false;
+}
+
+function buildSuggestedPedidoTemplate(report, text) {
+  const protocol = report.protocol || SURGERY_PROTOCOLS.lombar;
+  const levels = protocol === SURGERY_PROTOCOLS.endoscopica ? 1 : detectLevelsFromText(text || "");
+  const cid = report.cidFound?.[0] || protocol.defaultCid;
+  const tuss = buildTussItems(protocol, levels);
+  const opme = getOpmeForProtocol(protocol, levels);
+  const context = getRequestContext();
+  const diagnosis = report.protocolLabel && report.protocolLabel !== "Não identificado automaticamente"
+    ? report.protocolLabel
+    : "Patologia de coluna com indicacao cirurgica";
+
+  return buildSurgeryRequestTemplate({
+    doctorName: context.doctor.name,
+    doctorCrm: context.doctor.crm,
+    doctorUf: context.doctor.uf,
+    patientName: context.patient.name,
+    patientDocument: context.patient.document,
+    surgeryDate: context.surgeryDate,
+    cid,
+    procedure: protocol.procedure,
+    patientContext: `${diagnosis}; niveis planejados: ${levels}; quadro clinico com limitacao funcional progressiva.`,
+    justification:
+      "Solicitacao revisada para adequacao tecnica, com descricao objetiva de indicacao cirurgica, correlacao clinico-radiologica e padronizacao de codificacao.",
+    tuss,
+    opme
+  });
+}
 function detectProtocolByText(text) {
   const source = normalized(text);
 
@@ -1390,22 +1462,27 @@ function evaluatePedido(text) {
   const content = text || "";
   const normalizedContent = normalized(content);
   const protocol = detectProtocolByText(content);
+  const levels = detectLevelsFromText(content);
 
   const cidFound = extractPossibleCid(content);
+  const tussAnyFound = extractAnyTussCodes(content);
   const tussFound = extractTussCodes(content);
+  const opmeCodesFound = extractOpmeCodes(content);
+  const expectedTuss = protocol ? protocol.tuss.map((item) => item.codigo) : [];
+  const expectedPrefixes = getExpectedOpmeCodePrefixes(protocol);
+  const matchedTussCount = expectedTuss.filter((code) => tussFound.includes(code)).length;
+  const hasExpectedTussBase = expectedTuss.length ? matchedTussCount >= 2 : tussFound.length >= 2;
+
   const hasProcedureBlock = normalizedContent.includes("procedimento cirurgico proposto");
   const hasLevels =
-    /\bniveis?\b|\bnivel\b|\bc[0-7]-c[0-7]\b|\bl[1-5]-s1\b|\bl[1-5]-l[1-5]\b|\bt[1-9][0-9]?-[tl][0-9]+\b/i.test(
-      content
-    );
+    /\bniveis?\b|\bnivel\b|\bc[0-7]-c[0-7]\b|\bl[1-5]-s1\b|\bl[1-5]-l[1-5]\b|\bt[1-9][0-9]?-[tl][0-9]+\b/i.test(content);
   const hasImage =
     normalizedContent.includes("ressonancia") ||
     normalizedContent.includes("tomografia") ||
     normalizedContent.includes("tc") ||
     normalizedContent.includes("imagem") ||
     normalizedContent.includes("anexo");
-  const hasFunctionalScale =
-    /\beva\b|\bodi\b|\bndi\b|\bmjoa\b|\beq-5d\b|\bpromis\b/i.test(content);
+  const hasFunctionalScale = /\beva\b|\bodi\b|\bndi\b|\bmjoa\b|\beq-5d\b|\bpromis\b/i.test(content);
   const hasPreviousTreatment =
     normalizedContent.includes("tratamento conservador") ||
     normalizedContent.includes("fisioterapia") ||
@@ -1413,66 +1490,82 @@ function evaluatePedido(text) {
     normalizedContent.includes("infiltr") ||
     normalizedContent.includes("bloqueio") ||
     normalizedContent.includes("falha");
-  const hasAnexoPhrase = normalizedContent.includes("os exames comprobatorios do caso estao em anexo");
+  const hasAnexoPhrase =
+    normalizedContent.includes("os exames comprobatorios do caso estao em anexo") ||
+    normalizedContent.includes("exames comprobat") ||
+    normalizedContent.includes("estao em anexo");
   const hasCompanies = ALLOWED_COMPANIES.some((company) => normalizedContent.includes(normalized(company)));
   const hasOpme = protocol
     ? protocol.opmeKeywords.some((keyword) => normalizedContent.includes(normalized(keyword)))
     : normalizedContent.includes("opme") || normalizedContent.includes("material");
+  const hasAnatomyConflict = hasAnatomicalConflict(protocol, normalizedContent);
+  const hasPlausibility = !hasAnatomyConflict && hasProcedureBlock && hasLevels;
+  const hasOpmeCodes = opmeCodesFound.length > 0;
+  const hasCompatibleOpmeCodes =
+    !expectedPrefixes.length || !hasOpmeCodes ||
+    opmeCodesFound.some((code) => expectedPrefixes.some((prefix) => code.startsWith(prefix)));
 
   const hasCidAndProcedure = cidFound.length > 0 && hasProcedureBlock;
-  const hasItemizedOpme = hasOpme && (normalizedContent.includes("opme") || normalizedContent.includes("parafuso"));
+  const hasItemizedOpme = normalizedContent.includes("opme") || normalizedContent.includes("parafuso") || hasOpmeCodes;
 
   const checks = [
-    {
-      ok: hasCidAndProcedure,
-      label: "CID + procedimento"
-    },
-    {
-      ok: hasLevels,
-      label: "Niveis solicitados"
-    },
-    {
-      ok: hasImage,
-      label: "Imagem anexada"
-    },
-    {
-      ok: hasFunctionalScale,
-      label: "Escala funcional"
-    },
-    {
-      ok: hasPreviousTreatment,
-      label: "Tratamento previo"
-    },
-    {
-      ok: hasItemizedOpme,
-      label: "OPME por item"
-    }
+    { ok: hasCidAndProcedure, label: "CID + procedimento cirurgico descrito" },
+    { ok: hasLevels, label: "Niveis cirurgicos explicitados" },
+    { ok: hasImage, label: "Comprovacao por imagem" },
+    { ok: hasFunctionalScale, label: "Escala funcional documentada" },
+    { ok: hasPreviousTreatment, label: "Falha de tratamento previo" },
+    { ok: hasItemizedOpme, label: "OPME por item" },
+    { ok: hasOpmeCodes, label: "Codigos OPME informados" },
+    { ok: hasCompatibleOpmeCodes, label: "OPME compativel com a lesao/cirurgia" },
+    { ok: hasExpectedTussBase, label: "TUSS plausiveis para a cirurgia" },
+    { ok: hasPlausibility, label: "Plausibilidade anatomica da indicacao" }
   ];
 
   const okCount = checks.filter((item) => item.ok).length;
   const approved = checks.every((item) => item.ok) && tussFound.length >= 4 && hasCompanies && hasAnexoPhrase;
 
   let operationalSignal = "vermelho";
-  let operationalLabel = "Segunda opiniao / painel";
+  let operationalLabel = "Necessita adequacao";
+  let outcomeTitle = "Pedido fora do padrao";
+  let outcomeMessage = "O pedido apresenta inconsistencias tecnicas e deve ser ajustado antes de envio ao plano.";
 
   if (approved) {
     operationalSignal = "verde";
-    operationalLabel = "Autoriza";
+    operationalLabel = "Pedido adequado";
+    outcomeTitle = "Pedido aprovado";
+    outcomeMessage = "Pedido dentro do padrao tecnico. Medico pode enviar ao plano.";
   } else if (okCount >= 4) {
     operationalSignal = "amarelo";
-    operationalLabel = "Audita";
+    operationalLabel = "Ajuste recomendado";
+    outcomeTitle = "Pedido parcialmente adequado";
+    outcomeMessage = "Pedido pode seguir para auditoria, mas recomenda-se adequacao para reduzir glosas.";
   }
+
+  const attentionPoints = checks.filter((item) => !item.ok).map((item) => item.label);
+  const suggestedTemplate = !approved
+    ? buildSuggestedPedidoTemplate({ protocol, protocolLabel: protocol?.label, cidFound }, content)
+    : "";
 
   return {
     approved,
+    protocol,
     protocolLabel: protocol?.label || "Não identificado automaticamente",
+    levels,
     cidFound,
+    tussAnyFound,
     tussFound,
+    opmeCodesFound,
+    expectedTuss,
+    matchedTussCount,
     checks,
+    attentionPoints,
     operationalSignal,
     operationalLabel,
+    outcomeTitle,
+    outcomeMessage,
     hasCompanies,
-    hasAnexoPhrase
+    hasAnexoPhrase,
+    suggestedTemplate
   };
 }
 
@@ -1510,29 +1603,77 @@ function renderUploadResult(report) {
   const checklist = report.checks
     .map((item) => `<li>${item.ok ? "[OK]" : "[FALTA]"} ${escapeHtml(item.label)}</li>`)
     .join("");
+  const attentionHtml = report.attentionPoints.length
+    ? `<ul>${report.attentionPoints.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+    : "<p>Sem pendencias criticas identificadas.</p>";
+  const tussSummary = report.expectedTuss.length
+    ? `${report.matchedTussCount}/${report.expectedTuss.length} codigos esperados encontrados`
+    : `${report.tussFound.length} codigos validos encontrados`;
+  const opmeSummary = report.opmeCodesFound.length ? report.opmeCodesFound.join(", ") : "Nenhum codigo OPME identificado";
 
   uploadResult.innerHTML = `
     <span class="status-pill ${statusClass}">${statusText}</span>
     <h3>Avaliacao do pedido</h3>
+    <p><strong>Desfecho:</strong> ${escapeHtml(report.outcomeTitle)}</p>
+    <p>${escapeHtml(report.outcomeMessage)}</p>
     <p><strong>Cirurgia detectada:</strong> ${escapeHtml(report.protocolLabel)}</p>
+    <p><strong>Niveis detectados:</strong> ${escapeHtml(String(report.levels || 1))}</p>
     <p><strong>CID-10 encontrado:</strong> ${escapeHtml(report.cidFound.join(", ") || "Nenhum")}</p>
     <p><strong>TUSS encontrados:</strong> ${escapeHtml(report.tussFound.join(", ") || "Nenhum")}</p>
+    <p><strong>Plausibilidade TUSS:</strong> ${escapeHtml(tussSummary)}</p>
+    <p><strong>Codigos OPME encontrados:</strong> ${escapeHtml(opmeSummary)}</p>
     <p><strong>Empresa permitida:</strong> ${report.hasCompanies ? "OK" : "FALTA"}</p>
     <p><strong>Frase final de anexos:</strong> ${report.hasAnexoPhrase ? "OK" : "FALTA"}</p>
+    <p><strong>Pontos de atencao:</strong></p>
+    ${attentionHtml}
     <ul>${checklist}</ul>
-    <p><strong>Regra da aula:</strong> verde autoriza, amarelo audita, vermelho segunda opiniao/painel.</p>
+    <p><strong>Regra operacional:</strong> verde pode enviar ao plano, amarelo/vermelho exigem decisao do medico.</p>
   `;
 
-  if (!report.approved) {
-    const alternative = buildAlternativePedido(report);
-    const altBlock = document.createElement("div");
-    altBlock.className = "result-actions";
-    altBlock.innerHTML = `
-      <p><strong>Versão alternativa sugerida:</strong></p>
-      <pre>${escapeHtml(alternative)}</pre>
-    `;
-    uploadResult.appendChild(altBlock);
+  if (report.approved) {
+    const okBlock = document.createElement("div");
+    okBlock.className = "result-actions";
+    okBlock.innerHTML = `<p><strong>Conclusao:</strong> Pedido adequado. Medico pode enviar ao plano.</p>`;
+    uploadResult.appendChild(okBlock);
+    return;
   }
+
+  const decisionBlock = document.createElement("div");
+  decisionBlock.className = "result-actions";
+  decisionBlock.innerHTML = `
+    <p><strong>Escolha o caminho:</strong></p>
+    <button id="keepPedidoBtn" class="admin-btn secondary" type="button">1 - Manter pedido e encaminhar para auditor</button>
+    <button id="suggestPedidoBtn" class="admin-btn secondary" type="button">2 - Sugerir adequacao do pedido</button>
+    <div id="uploadDecisionOutcome"></div>
+  `;
+  uploadResult.appendChild(decisionBlock);
+
+  const alternative = buildAlternativePedido(report);
+  const altBlock = document.createElement("div");
+  altBlock.className = "result-actions";
+  altBlock.innerHTML = `
+    <p><strong>Resumo de ajuste tecnico:</strong></p>
+    <pre>${escapeHtml(alternative)}</pre>
+  `;
+  uploadResult.appendChild(altBlock);
+}
+
+function renderUploadDecisionOutcome(action, report) {
+  const outcomeEl = document.querySelector("#uploadDecisionOutcome");
+  if (!outcomeEl) {
+    return;
+  }
+
+  if (action === "keep") {
+    outcomeEl.innerHTML = `<p><strong>Caminho 1 selecionado:</strong> pedido mantido. Encaminhar para auditoria medica com os pontos de atencao destacados.</p>`;
+    return;
+  }
+
+  const suggested = report.suggestedTemplate || "Nao foi possivel montar sugestao automatica.";
+  outcomeEl.innerHTML = `
+    <p><strong>Caminho 2 selecionado:</strong> sugestao de adequacao do pedido para a lesao especifica.</p>
+    <pre>${escapeHtml(suggested)}</pre>
+  `;
 }
 
 function setInternalTab(tabId) {
@@ -1936,100 +2077,135 @@ function bindDecisionHub() {
     modeUploadBtn.addEventListener("click", () => setDecisionMode("upload"));
   }
 
-  surgeryTypeSelect.addEventListener("change", () => {
-    const isEndoscopic = surgeryTypeSelect.value === "endoscopica";
-    levelsSelect.disabled = isEndoscopic;
-    if (isEndoscopic) {
-      levelsSelect.value = "1";
-    }
-  });
+  if (surgeryTypeSelect && levelsSelect) {
+    surgeryTypeSelect.addEventListener("change", () => {
+      const isEndoscopic = surgeryTypeSelect.value === "endoscopica";
+      levelsSelect.disabled = isEndoscopic;
+      if (isEndoscopic) {
+        levelsSelect.value = "1";
+      }
+    });
+  }
 
-  generateDecisionBtn.addEventListener("click", () => {
-    const result = validateQuestionnaireInputs();
-    if (!result) {
-      return;
-    }
-    registerQuestionnaireRequest(result);
-    renderQuestionnaireResult(result);
-  });
+  if (generateDecisionBtn && decisionResult) {
+    generateDecisionBtn.addEventListener("click", () => {
+      const result = validateQuestionnaireInputs();
+      if (!result) {
+        return;
+      }
+      registerQuestionnaireRequest(result);
+      renderQuestionnaireResult(result);
+    });
+  }
 
-  pedidoFileInput.addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      uploadedPedidoText = "";
-      return;
-    }
-
-    try {
-      uploadedPedidoText = await extractTextFromFile(file);
-      uploadResult.innerHTML = `<p>Arquivo carregado: <strong>${escapeHtml(file.name)}</strong>.</p>`;
-    } catch (error) {
-      uploadedPedidoText = "";
-      uploadResult.innerHTML = `<p>Falha ao ler arquivo: ${escapeHtml(error.message)}</p>`;
-    }
-  });
-
-  analyzePedidoBtn.addEventListener("click", () => {
-    const combined = `${uploadedPedidoText}\n${pedidoTextInput.value || ""}`.trim();
-    if (!combined) {
-      uploadResult.innerHTML =
-        "<p>Envie um arquivo ou cole o texto do pedido para executar a avaliacao de liberacao.</p>";
-      return;
-    }
-
-    const report = evaluatePedido(combined);
-    const registered = registerUploadRequest(report, combined);
-    if (!registered) {
-      return;
-    }
-    renderUploadResult(report);
-  });
-
-  decisionResult.addEventListener("click", async (event) => {
-    const btn = event.target.closest("#copyRequestBtn");
-    const downloadBtn = event.target.closest("#downloadRequestBtn");
-
-    if (btn) {
-      if (!latestRequestTemplate) {
+  if (pedidoFileInput && uploadResult) {
+    pedidoFileInput.addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        uploadedPedidoText = "";
         return;
       }
 
       try {
-        await navigator.clipboard.writeText(latestRequestTemplate);
-        btn.textContent = "Copiado";
-        setTimeout(() => {
-          btn.textContent = "Copiar solicitação";
-        }, 1500);
-      } catch {
-        btn.textContent = "Falha ao copiar";
-        setTimeout(() => {
-          btn.textContent = "Copiar solicitação";
-        }, 1500);
+        uploadedPedidoText = await extractTextFromFile(file);
+        uploadResult.innerHTML = `<p>Arquivo carregado: <strong>${escapeHtml(file.name)}</strong>.</p>`;
+      } catch (error) {
+        uploadedPedidoText = "";
+        uploadResult.innerHTML = `<p>Falha ao ler arquivo: ${escapeHtml(error.message)}</p>`;
       }
-      return;
-    }
+    });
+  }
 
-    if (downloadBtn) {
-      if (!latestRequestTemplate) {
+  if (analyzePedidoBtn && pedidoTextInput && uploadResult) {
+    analyzePedidoBtn.addEventListener("click", () => {
+      const combined = `${uploadedPedidoText}\n${pedidoTextInput.value || ""}`.trim();
+      if (!combined) {
+        uploadResult.innerHTML =
+          "<p>Envie um arquivo ou cole o texto do pedido para executar a avaliacao de liberacao.</p>";
         return;
       }
 
-      const blob = new Blob([latestRequestTemplate], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = latestRequestFileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      const report = evaluatePedido(combined);
+      const registered = registerUploadRequest(report, combined);
+      renderUploadResult(report);
+      if (!registered) {
+        const note = document.createElement("p");
+        note.innerHTML = "<strong>Observacao:</strong> analise concluida, mas o ranking exige CRM e UF para vincular o medico.";
+        uploadResult.appendChild(note);
+        return;
+      }
+    });
+  }
 
-      downloadBtn.textContent = "Arquivo baixado";
-      setTimeout(() => {
-        downloadBtn.textContent = "Baixar .txt";
-      }, 1500);
-    }
-  });
+  if (uploadResult && pedidoTextInput) {
+    uploadResult.addEventListener("click", (event) => {
+      const keepBtn = event.target.closest("#keepPedidoBtn");
+      const suggestBtn = event.target.closest("#suggestPedidoBtn");
+      if (!keepBtn && !suggestBtn) {
+        return;
+      }
+
+      const combined = `${uploadedPedidoText}\n${pedidoTextInput.value || ""}`.trim();
+      if (!combined) {
+        return;
+      }
+
+      const report = evaluatePedido(combined);
+      if (keepBtn) {
+        renderUploadDecisionOutcome("keep", report);
+        return;
+      }
+      renderUploadDecisionOutcome("suggest", report);
+    });
+  }
+
+  if (decisionResult) {
+    decisionResult.addEventListener("click", async (event) => {
+      const btn = event.target.closest("#copyRequestBtn");
+      const downloadBtn = event.target.closest("#downloadRequestBtn");
+
+      if (btn) {
+        if (!latestRequestTemplate) {
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(latestRequestTemplate);
+          btn.textContent = "Copiado";
+          setTimeout(() => {
+            btn.textContent = "Copiar solicitação";
+          }, 1500);
+        } catch {
+          btn.textContent = "Falha ao copiar";
+          setTimeout(() => {
+            btn.textContent = "Copiar solicitação";
+          }, 1500);
+        }
+        return;
+      }
+
+      if (downloadBtn) {
+        if (!latestRequestTemplate) {
+          return;
+        }
+
+        const blob = new Blob([latestRequestTemplate], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = latestRequestFileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        downloadBtn.textContent = "Arquivo baixado";
+        setTimeout(() => {
+          downloadBtn.textContent = "Baixar .txt";
+        }, 1500);
+      }
+    });
+  }
 }
 
 async function loadData() {
@@ -2080,6 +2256,18 @@ function init() {
 }
 
 init();
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
