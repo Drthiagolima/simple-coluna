@@ -2067,7 +2067,8 @@ async function extractTextFromFile(file) {
 
   const utf8Score = (utf8.match(/[a-zA-Z0-9]/g) || []).length;
   const latin1Score = (latin1.match(/[a-zA-Z0-9]/g) || []).length;
-  return utf8Score >= latin1Score ? utf8 : latin1;
+  const selected = utf8Score >= latin1Score ? utf8 : latin1;
+  return selected.replace(/\u0000/g, " ").trim();
 }
 
 function bindDecisionHub() {
@@ -2086,6 +2087,29 @@ function bindDecisionHub() {
       }
     });
   }
+
+  const runUploadAudit = () => {
+    if (!pedidoTextInput || !uploadResult) {
+      return false;
+    }
+
+    const combined = `${uploadedPedidoText}\n${pedidoTextInput.value || ""}`.trim();
+    if (!combined) {
+      uploadResult.innerHTML =
+        "<p>Envie um arquivo ou cole o texto do pedido para executar a avaliacao de liberacao.</p>";
+      return false;
+    }
+
+    const report = evaluatePedido(combined);
+    const registered = registerUploadRequest(report, combined);
+    renderUploadResult(report);
+    if (!registered) {
+      const note = document.createElement("p");
+      note.innerHTML = "<strong>Observacao:</strong> analise concluida, mas o ranking exige CRM e UF para vincular o medico.";
+      uploadResult.appendChild(note);
+    }
+    return true;
+  };
 
   if (generateDecisionBtn && decisionResult) {
     generateDecisionBtn.addEventListener("click", () => {
@@ -2109,6 +2133,9 @@ function bindDecisionHub() {
       try {
         uploadedPedidoText = await extractTextFromFile(file);
         uploadResult.innerHTML = `<p>Arquivo carregado: <strong>${escapeHtml(file.name)}</strong>.</p>`;
+        if (uploadedPedidoText) {
+          runUploadAudit();
+        }
       } catch (error) {
         uploadedPedidoText = "";
         uploadResult.innerHTML = `<p>Falha ao ler arquivo: ${escapeHtml(error.message)}</p>`;
@@ -2118,22 +2145,7 @@ function bindDecisionHub() {
 
   if (analyzePedidoBtn && pedidoTextInput && uploadResult) {
     analyzePedidoBtn.addEventListener("click", () => {
-      const combined = `${uploadedPedidoText}\n${pedidoTextInput.value || ""}`.trim();
-      if (!combined) {
-        uploadResult.innerHTML =
-          "<p>Envie um arquivo ou cole o texto do pedido para executar a avaliacao de liberacao.</p>";
-        return;
-      }
-
-      const report = evaluatePedido(combined);
-      const registered = registerUploadRequest(report, combined);
-      renderUploadResult(report);
-      if (!registered) {
-        const note = document.createElement("p");
-        note.innerHTML = "<strong>Observacao:</strong> analise concluida, mas o ranking exige CRM e UF para vincular o medico.";
-        uploadResult.appendChild(note);
-        return;
-      }
+      runUploadAudit();
     });
   }
 
@@ -2256,6 +2268,8 @@ function init() {
 }
 
 init();
+
+
 
 
 
