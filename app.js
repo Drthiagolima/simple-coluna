@@ -2058,17 +2058,94 @@ async function extractTextFromFile(file) {
   const lowerName = file.name.toLowerCase();
   const textLike = [".txt", ".md", ".csv", ".json"];
   if (textLike.some((ext) => lowerName.endsWith(ext))) {
-    return file.text();
+    return sanitizeExtractedText(await file.text());
   }
 
   const buffer = await file.arrayBuffer();
+
+  if (lowerName.endsWith(".pdf")) {
+    return extractTextFromPdf(buffer);
+  }
+
+  if (lowerName.endsWith(".docx")) {
+    return extractTextFromDocx(buffer);
+  }
+
+  if (lowerName.endsWith(".doc")) {
+    throw new Error("Arquivo .doc possui leitura limitada no navegador. Converta para .docx, PDF com texto selecionavel ou cole o conteudo no campo de texto.");
+  }
+
   const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
   const latin1 = new TextDecoder("latin1", { fatal: false }).decode(buffer);
 
   const utf8Score = (utf8.match(/[a-zA-Z0-9]/g) || []).length;
   const latin1Score = (latin1.match(/[a-zA-Z0-9]/g) || []).length;
   const selected = utf8Score >= latin1Score ? utf8 : latin1;
-  return selected.replace(/\u0000/g, " ").trim();
+  return sanitizeExtractedText(selected);
+}
+
+function sanitizeExtractedText(text) {
+  return String(text || "")
+    .replace(/\u0000/g, " ")
+    .replace(/\r/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function hasSufficientExtractedText(text) {
+  const score = (String(text || "").match(/[a-zA-Z0-9]/g) || []).length;
+  return score >= 40;
+}
+
+async function extractTextFromPdf(buffer) {
+  if (!window.pdfjsLib) {
+    throw new Error("Leitor de PDF nao carregado. Recarregue a pagina e tente novamente.");
+  }
+
+  if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  }
+
+  const loadingTask = window.pdfjsLib.getDocument({ data: buffer });
+  const pdf = await loadingTask.promise;
+  const pages = [];
+
+  for (let pageIndex = 1; pageIndex <= pdf.numPages; pageIndex += 1) {
+    const page = await pdf.getPage(pageIndex);
+    const textContent = await page.getTextContent();
+    const rows = new Map();
+
+    textContent.items.forEach((item) => {
+      const value = String(item.str || "").trim();
+      if (!value) {
+        return;
+      }
+
+      const x = Array.isArray(item.transform) ? item.transform[4] : 0;
+      const y = Array.isArray(item.transform) ? Math.round(item.transform[5]) : 0;
+      const row = rows.get(y) || [];
+      row.push({ x, value });
+      rows.set(y, row);
+    });
+
+    const lines = Array.from(rows.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map((entry) => entry[1].sort((a, b) => a.x - b.x).map((token) => token.value).join(" "));
+
+    pages.push(lines.join("\n"));
+  }
+
+  return sanitizeExtractedText(pages.join("\n\n"));
+}
+
+async function extractTextFromDocx(buffer) {
+  if (!window.mammoth || typeof window.mammoth.extractRawText !== "function") {
+    throw new Error("Leitor de DOCX nao carregado. Recarregue a pagina e tente novamente.");
+  }
+
+  const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+  return sanitizeExtractedText(result.value);
 }
 
 function bindDecisionHub() {
@@ -2133,6 +2210,12 @@ function bindDecisionHub() {
       try {
         uploadedPedidoText = await extractTextFromFile(file);
         uploadResult.innerHTML = `<p>Arquivo carregado: <strong>${escapeHtml(file.name)}</strong>.</p>`;
+        if (!hasSufficientExtractedText(uploadedPedidoText)) {
+          uploadResult.innerHTML +=
+            "<p>Arquivo carregado, mas nao foi possivel extrair texto suficiente com precisao. Cole o texto do pedido manualmente e clique em Auditar documento.</p>";
+          return;
+        }
+
         if (uploadedPedidoText) {
           runUploadAudit();
         }
@@ -2268,6 +2351,9 @@ function init() {
 }
 
 init();
+
+
+
 
 
 
