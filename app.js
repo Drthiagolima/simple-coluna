@@ -1364,10 +1364,29 @@ function validateQuestionnaireInputs() {
 }
 
 function extractPossibleCid(text) {
-  const matches = text.match(/\b[A-TV-Z][0-9][0-9AB](?:\.[0-9A-Z]{1,2})?\b/gi) || [];
-  return [...new Set(matches.map((item) => item.toUpperCase()))];
-}
+  if (!text) {
+    return [];
+  }
 
+  const explicitSectionMatches = [];
+  const explicitRegex = /\bCID(?:-10)?\b[^A-Z0-9]{0,10}((?:[A-TV-Z]\d{2}(?:\.[0-9A-Z]{1,2})?)(?:\s*[,;/]\s*[A-TV-Z]\d{2}(?:\.[0-9A-Z]{1,2})?)*)/gi;
+  let explicitMatch = explicitRegex.exec(text);
+  while (explicitMatch) {
+    const chunk = explicitMatch[1] || "";
+    const chunkCodes = chunk.match(/\b[A-TV-Z]\d{2}(?:\.[0-9A-Z]{1,2})?\b/gi) || [];
+    explicitSectionMatches.push(...chunkCodes);
+    explicitMatch = explicitRegex.exec(text);
+  }
+
+  const normalizedExplicit = [...new Set(explicitSectionMatches.map((item) => item.toUpperCase()))];
+  if (normalizedExplicit.length) {
+    return normalizedExplicit;
+  }
+
+  // Avoid vertebral level false positives (e.g., T11/T12) in fallback mode.
+  const decimalMatches = text.match(/\b[A-TV-Z]\d{2}\.[0-9A-Z]{1,2}\b/gi) || [];
+  return [...new Set(decimalMatches.map((item) => item.toUpperCase()))];
+}
 function extractTussCodes(text) {
   const found = text.match(/\b\d{8}\b/g) || [];
   return [...new Set(found)].filter((code) => ALL_VALID_TUSS.has(code));
@@ -1473,7 +1492,14 @@ function evaluatePedido(text) {
   const matchedTussCount = expectedTuss.filter((code) => tussFound.includes(code)).length;
   const hasExpectedTussBase = expectedTuss.length ? matchedTussCount >= 2 : tussFound.length >= 2;
 
-  const hasProcedureBlock = normalizedContent.includes("procedimento cirurgico proposto");
+  const hasProcedureBlock =
+    normalizedContent.includes("procedimento cirurgico proposto") ||
+    normalizedContent.includes("procedimento cirurgico") ||
+    normalizedContent.includes("indicacao cirurgica") ||
+    normalizedContent.includes("cirurgia proposta") ||
+    normalizedContent.includes("artrodese") ||
+    normalizedContent.includes("laminectomia") ||
+    normalizedContent.includes("discectomia");
   const hasLevels =
     /\bniveis?\b|\bnivel\b|\bc[0-7]-c[0-7]\b|\bl[1-5]-s1\b|\bl[1-5]-l[1-5]\b|\bt[1-9][0-9]?-[tl][0-9]+\b/i.test(content);
   const hasImage =
@@ -2397,6 +2423,8 @@ function init() {
 }
 
 init();
+
+
 
 
 
