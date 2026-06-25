@@ -308,12 +308,12 @@
                     </label>
 
                     <label>
-                      Nome do médico
+                      Nome do médico (opcional)
                       <input id="doctorNameInput" type="text" placeholder="Preenchido automaticamente pela consulta CFM" />
                     </label>
 
                     <label>
-                      Nome do paciente
+                      Nome do paciente (opcional)
                       <input id="patientNameInput" type="text" placeholder="Ex.: João da Silva" />
                     </label>
 
@@ -348,24 +348,19 @@
 
                 <div id="questionnairePanel" class="decision-panel">
                   <div class="decision-grid">
-                    <label>
-                      Tipo de cirurgia
-                      <select id="surgeryTypeSelect">
-                        <option value="">Selecione</option>
-                        <option value="cervical">Artrodese cervical (via anterior/póstero-lateral)</option>
-                        <option value="lombar">Artrodese lombar (via anterior/póstero-lateral)</option>
-                        <option value="endoscopica">Cirurgia endoscópica de coluna</option>
-                      </select>
-                    </label>
+                                        <fieldset class="choice-group">
+                      <legend>Tipo de cirurgia (múltipla escolha)</legend>
+                      <label class="check-row"><input name="surgeryTypeChoice" type="checkbox" value="cervical" /> Artrodese cervical (via anterior/póstero-lateral)</label>
+                      <label class="check-row"><input name="surgeryTypeChoice" type="checkbox" value="lombar" /> Artrodese lombar (via anterior/póstero-lateral)</label>
+                      <label class="check-row"><input name="surgeryTypeChoice" type="checkbox" value="endoscopica" /> Cirurgia endoscópica de coluna</label>
+                    </fieldset>
 
-                    <label>
-                      Número de níveis
-                      <select id="levelsSelect">
-                        <option value="1">1 nível</option>
-                        <option value="2">2 níveis</option>
-                        <option value="3">3 níveis</option>
-                      </select>
-                    </label>
+                    <fieldset class="choice-group">
+                      <legend>Número de níveis cirúrgicos (múltipla escolha)</legend>
+                      <label class="check-row"><input name="surgeryLevelChoice" type="checkbox" value="1" /> 1 nível</label>
+                      <label class="check-row"><input name="surgeryLevelChoice" type="checkbox" value="2" /> 2 níveis</label>
+                      <label class="check-row"><input name="surgeryLevelChoice" type="checkbox" value="3" /> 3 níveis</label>
+                    </fieldset>
 
                     <label class="check-row"><input id="redFlagNeuroInput" type="checkbox" /> Déficit neurológico progressivo</label>
                     <label class="check-row"><input id="redFlagCompressionInput" type="checkbox" /> Sinais de compressão medular/cauda equina</label>
@@ -390,19 +385,7 @@
                     <label>
                       Patologia principal
                       <input id="mainDiagnosisInput" type="text" placeholder="Ex.: Hérnia de disco lombar com radiculopatia" />
-                    </label>
-
-                    <label>
-                      Objetivo tecnológico principal
-                      <select id="techGoalSelect">
-                        <option value="">Selecione</option>
-                        <option value="precisao">Aumentar precisão da execução</option>
-                        <option value="planejamento">Aprimorar planejamento pré-operatório</option>
-                        <option value="tempo">Reduzir tempo cirúrgico e trauma</option>
-                        <option value="formacao">Apoio a formação/simulação da equipe</option>
-                      </select>
-                    </label>
-                  </div>
+                    </label>`r`n</div>
 
                   <div class="decision-actions">
                     <button id="generateDecisionBtn" class="admin-btn" type="button">Gerar decisão e pedido padronizado</button>
@@ -562,9 +545,12 @@
       <p>Simple Coluna - Construção incremental do portal clínico-educacional</p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
+
+
 
 
 

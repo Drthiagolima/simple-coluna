@@ -328,7 +328,6 @@ const classConventionalLimitInput = document.querySelector("#classConventionalLi
 const functionalLimitationsInput = document.querySelector("#functionalLimitationsInput");
 const cidInput = document.querySelector("#cidInput");
 const mainDiagnosisInput = document.querySelector("#mainDiagnosisInput");
-const techGoalSelect = document.querySelector("#techGoalSelect");
 const generateDecisionBtn = document.querySelector("#generateDecisionBtn");
 const decisionResult = document.querySelector("#decisionResult");
 
@@ -1178,7 +1177,7 @@ function calculateUrgency(flags) {
   return { level: "verde", css: "status-green", reasons, track, operationalSignal, operationalLabel };
 }
 
-function buildTechnologyRecommendations(flags, techGoal) {
+function buildTechnologyRecommendations(flags) {
   const recommendations = [];
 
   if (flags.complexAnatomy || flags.needPrecision) {
@@ -1187,21 +1186,15 @@ function buildTechnologyRecommendations(flags, techGoal) {
     );
   }
 
-  if (flags.needPrecision || techGoal === "planejamento") {
+  if (flags.needPrecision) {
     recommendations.push(
       "Planejamento 3D com apoio de IA para classificacao e estrategia pre-operatoria baseada em dados."
     );
   }
 
-  if (flags.conventionalLimit || techGoal === "tempo") {
+  if (flags.conventionalLimit) {
     recommendations.push(
       "Impressao 3D para modelos/guia com foco em menor tempo de sala e menor trauma cirurgico."
-    );
-  }
-
-  if (techGoal === "formacao") {
-    recommendations.push(
-      "Realidade aumentada/virtual para simulacao de casos complexos e treinamento da equipe."
     );
   }
 
@@ -1319,12 +1312,11 @@ function validateQuestionnaireInputs() {
     needPrecision: classNeedPrecisionInput?.checked || false,
     conventionalLimit: classConventionalLimitInput?.checked || false
   };
-  const techGoal = techGoalSelect?.value || "";
-
+  
   const urgency = calculateUrgency(flags);
   const tuss = buildTussItems(protocol, levels);
   const opme = getOpmeForProtocol(protocol, levels);
-  const technologyRecommendations = buildTechnologyRecommendations(flags, techGoal);
+  const technologyRecommendations = buildTechnologyRecommendations(flags);
 
   const complexityPillars = [];
   if (flags.highMorbidity) complexityPillars.push("alta morbimortalidade");
@@ -2088,6 +2080,8 @@ function init() {
 }
 
 init();
+
+
 
 
 

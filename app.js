@@ -328,7 +328,6 @@ const classConventionalLimitInput = document.querySelector("#classConventionalLi
 const functionalLimitationsInput = document.querySelector("#functionalLimitationsInput");
 const cidInput = document.querySelector("#cidInput");
 const mainDiagnosisInput = document.querySelector("#mainDiagnosisInput");
-const techGoalSelect = document.querySelector("#techGoalSelect");
 const generateDecisionBtn = document.querySelector("#generateDecisionBtn");
 const decisionResult = document.querySelector("#decisionResult");
 
@@ -1178,7 +1177,7 @@ function calculateUrgency(flags) {
   return { level: "verde", css: "status-green", reasons, track, operationalSignal, operationalLabel };
 }
 
-function buildTechnologyRecommendations(flags, techGoal) {
+function buildTechnologyRecommendations(flags) {
   const recommendations = [];
 
   if (flags.complexAnatomy || flags.needPrecision) {
@@ -1187,21 +1186,15 @@ function buildTechnologyRecommendations(flags, techGoal) {
     );
   }
 
-  if (flags.needPrecision || techGoal === "planejamento") {
+  if (flags.needPrecision) {
     recommendations.push(
       "Planejamento 3D com apoio de IA para classificacao e estrategia pre-operatoria baseada em dados."
     );
   }
 
-  if (flags.conventionalLimit || techGoal === "tempo") {
+  if (flags.conventionalLimit) {
     recommendations.push(
       "Impressao 3D para modelos/guia com foco em menor tempo de sala e menor trauma cirurgico."
-    );
-  }
-
-  if (techGoal === "formacao") {
-    recommendations.push(
-      "Realidade aumentada/virtual para simulacao de casos complexos e treinamento da equipe."
     );
   }
 
@@ -1319,12 +1312,11 @@ function validateQuestionnaireInputs() {
     needPrecision: classNeedPrecisionInput?.checked || false,
     conventionalLimit: classConventionalLimitInput?.checked || false
   };
-  const techGoal = techGoalSelect?.value || "";
-
+  
   const urgency = calculateUrgency(flags);
   const tuss = buildTussItems(protocol, levels);
   const opme = getOpmeForProtocol(protocol, levels);
-  const technologyRecommendations = buildTechnologyRecommendations(flags, techGoal);
+  const technologyRecommendations = buildTechnologyRecommendations(flags);
 
   const complexityPillars = [];
   if (flags.highMorbidity) complexityPillars.push("alta morbimortalidade");
@@ -1584,6 +1576,10 @@ function parseDoctorProfileFromCfmText(text, crm, uf) {
       .replace(/\s+/g, " ")
       .trim();
   const isLikelyDoctorName = (value) => /[A-Za-zÀ-ÿ]{3,}/.test(value) && !/[<>]/.test(value);
+  const normalizeTextField = (value, fallback) => {
+    const parsed = clean(value);
+    return /[A-Za-zÀ-ÿ]{2,}/.test(parsed) && !/[<>]/.test(parsed) ? parsed : fallback;
+  };
   const parsedName = clean(nameMatch?.[1] || "");
   if (!crmUfRegex.test(source) && !isLikelyDoctorName(parsedName)) {
     return null;
@@ -1591,8 +1587,8 @@ function parseDoctorProfileFromCfmText(text, crm, uf) {
 
   return {
     name: isLikelyDoctorName(parsedName) ? parsedName : "",
-    specialty: clean(specialtyMatch?.[1] || "Não informado"),
-    status: clean(statusMatch?.[1] || "Ativo")
+    specialty: normalizeTextField(specialtyMatch?.[1], "Não informado"),
+    status: normalizeTextField(statusMatch?.[1], "Ativo")
   };
 }
 
@@ -2084,6 +2080,8 @@ function init() {
 }
 
 init();
+
+
 
 
 
