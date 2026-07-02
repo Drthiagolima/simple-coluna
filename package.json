@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Simple Coluna backend API and static app",
-  "main": "server.js",
+  "main": "server_new.js",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server_new.js"
   }
 }

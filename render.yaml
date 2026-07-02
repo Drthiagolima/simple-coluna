@@ -7,7 +7,7 @@ services:
     buildCommand: ""
     startCommand: "npm start"
     autoDeploy: true
-    healthCheckPath: /api/bootstrap
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 20
