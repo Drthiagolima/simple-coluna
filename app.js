@@ -1,8 +1,11 @@
 ﻿const TOKEN_KEY = "simplecoluna.auth.token.v2";
 const MEDICO_PROFILE_KEY = "simplecoluna.medico.profile.v2";
+const LOCAL_DB_KEY = "simplecoluna.local.db.v1";
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || "",
+  apiMode: "remote",
+  localModeNotified: false,
   user: null,
   navItems: [],
   activeScreen: "",
@@ -74,7 +77,587 @@ function brCurrency(number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(number || 0));
 }
 
+function hasUrgencyCriteria(flags) {
+  if (!flags) {
+    return false;
+  }
+  return Boolean(flags.deficitProgressivo || flags.caudaEquinaOuCompressao || flags.fraturaInstavel || flags.infeccaoOuTumor);
+}
+
+function localStatusFromFarol(farol) {
+  if (farol === "g") return "Autorizado fast-track";
+  if (farol === "r") return "Urgencia em curso";
+  return "Em validacao";
+}
+
+function localEvaluateFarol(input) {
+  const missing = [];
+  if (!input.protocoloId) missing.push("Selecione a patologia principal (protocolo).");
+  if (String(input.relato || "").trim().length < 20) missing.push("Relato clinico com pelo menos 20 caracteres.");
+  if (!input.flags?.imagemCompatavel) missing.push("Confirme imagem compativel.");
+  if (!input.flags?.escalaFuncional) missing.push("Confirme escala funcional.");
+  if (!input.flags?.falhaConservador) missing.push("Confirme falha do tratamento conservador.");
+  if (!input.flags?.correlacaoClinicaImagem) missing.push("Confirme correlacao clinica x imagem.");
+  if (!input.tussExiste) missing.push("Adicione ao menos um codigo TUSS valido para o procedimento.");
+  (input.perguntasObrigatoriasSemResposta || []).forEach((q) => missing.push(`Responder pergunta obrigatoria: ${q}`));
+
+  const checklist = {
+    clinicaCompleta: missing.length === 0,
+    fornecedor: input.temNaoParceira ? "!" : "ok",
+    material: input.temBlacklist ? "!" : "ok",
+    opmePacote: input.acimaTeto ? "!" : "ok",
+    urgencia: input.carater === "Urgencia" ? (input.temCriterioUrgencia ? "!" : "pendente") : "na"
+  };
+
+  if (input.carater === "Urgencia" && input.temCriterioUrgencia) {
+    return {
+      farol: "r",
+      titulo: "Fluxo de urgencia",
+      subtitulo: "Cuidado liberado de imediato; OPME acima do kit exige justificativa. Caso segue para revisao retrospectiva.",
+      nextSteps: [
+        "Registrar urgencia com criterio clinico objetivo.",
+        "Se OPME fugir do kit validado, anexar justificativa tecnica.",
+        "Hospital e operadora acompanham revisao retrospectiva."
+      ],
+      checklist,
+      pendencias: []
+    };
+  }
+
+  if (input.carater === "Urgencia" && !input.temCriterioUrgencia) {
+    return {
+      farol: "a",
+      titulo: "Urgencia a confirmar - protocolo de reclassificacao",
+      subtitulo: "Internar para analgesia e reclassificar como eletiva em 24-72h. O cuidado nao e interrompido.",
+      nextSteps: [
+        "Registrar conduta de analgesia e observacao.",
+        "Reclassificar para eletiva em ate 72h com dossie completo.",
+        "Manter rastreio para revisao retrospectiva da urgencia."
+      ],
+      checklist,
+      pendencias: []
+    };
+  }
+
+  if (missing.length) {
+    return {
+      farol: "a",
+      titulo: "Complete o dossie",
+      subtitulo: "Preencha os campos clinicos obrigatorios para seguir em fast-track.",
+      nextSteps: ["Finalizar o dossie minimo e reenviar para classificacao automatica."],
+      checklist,
+      pendencias: missing
+    };
+  }
+
+  if (input.temBlacklist) {
+    return {
+      farol: "r",
+      titulo: "Revisao de material - alternativa necessaria",
+      subtitulo: "Indicacao clinica aprovada; material em revisao tecnica pelo conselho. Substitua por alternativa parceira ou siga com justificativa para outro fluxo.",
+      nextSteps: [
+        "Substituir item blacklist por alternativa parceira para retorno ao verde.",
+        "Ou manter com justificativa para segunda opiniao / fluxo hospital."
+      ],
+      checklist,
+      pendencias: []
+    };
+  }
+
+  if (input.temNaoParceira) {
+    return {
+      farol: "a",
+      titulo: "Validacao de fornecedor",
+      subtitulo: "Verde clinico mantido. Escolha alternativa parceira, cotacao com a empresa escolhida via operadora, ou fluxo hospital.",
+      nextSteps: [
+        "Trocar para item de empresa parceira e autorizar imediatamente.",
+        "Ou manter fornecedor atual para cotacao formal pela operadora.",
+        "Ou seguir via fluxo hospital."
+      ],
+      checklist,
+      pendencias: []
+    };
+  }
+
+  if (input.acimaTeto) {
+    return {
+      farol: "a",
+      titulo: "OPME em validacao",
+      subtitulo: "Composicao fora do pacote padrao. Revise quantidades ou siga com justificativa para validacao em ate 5 dias uteis.",
+      nextSteps: [
+        "Revisar composicao do kit conforme pacote.",
+        "Se mantiver composicao atual, anexar justificativa tecnica para validacao."
+      ],
+      checklist,
+      pendencias: []
+    };
+  }
+
+  return {
+    farol: "g",
+    titulo: "Pronto para fast-track",
+    subtitulo: "Pedido segue autorizado no range delegado. Encaminhar ao hospital com visao de instantaneo e meta operacional de 5 dias uteis.",
+    nextSteps: ["Enviar pedido autorizado ao hospital.", "Registrar trilha da regra aplicada para auditoria."],
+    checklist,
+    pendencias: []
+  };
+}
+
+function localSeedData() {
+  return {
+    users: [
+      { id: "u-med-1", role: "medico", email: "medico@simplecoluna.com", password: "simple123", nome: "Dr. Rafael Lima" },
+      { id: "u-op-1", role: "operadora", email: "operadora@simplecoluna.com", password: "simple123", nome: "Analista Operadora" },
+      { id: "u-hosp-1", role: "hospital", email: "hospital@simplecoluna.com", password: "simple123", nome: "Central Hospitalar", hospitalPadrao: "Hospital Santa Coluna" },
+      { id: "u-admin-1", role: "admin", email: "admin@simplecoluna.com", password: "simple123", nome: "Administracao" }
+    ],
+    medicoPerfis: [],
+    protocolos: [
+      {
+        id: "p-hernia",
+        nome: "Hernia de disco lombar",
+        regiao: "Lombar",
+        autorizarQuando: ["Radiculopatia com correlacao clinica e imagem", "Falha de tratamento conservador com limitacao funcional"],
+        pontoDeControle: "Confirmar deficit neurologico e imagem compativel.",
+        perguntasImportantes: ["Existe deficit motor progressivo documentado?", "Por quanto tempo foi conduzido tratamento conservador?"],
+        referencias: [
+          { titulo: "NASS Guideline - Lumbar Disc Herniation", link: "https://www.spine.org/" },
+          { titulo: "Choosing Wisely - Spine Surgery", link: "https://www.choosingwisely.org/" }
+        ]
+      },
+      {
+        id: "p-estenose",
+        nome: "Estenose lombar",
+        regiao: "Lombar",
+        autorizarQuando: ["Claudicacao neurogenica limitante", "Imagem compativel e falha do conservador"],
+        pontoDeControle: "Definir necessidade de descompressao isolada ou com artrodese.",
+        perguntasImportantes: ["Ha limitacao funcional em marcha validada por escala?", "Radiografia dinamica sugere instabilidade?"],
+        referencias: [
+          { titulo: "NASS Guideline - Lumbar Stenosis", link: "https://www.spine.org/" },
+          { titulo: "Forsth et al. NEJM 2016", link: "https://www.nejm.org/" }
+        ]
+      },
+      {
+        id: "p-artrodese",
+        nome: "Artrodese lombar por instabilidade",
+        regiao: "Lombar",
+        autorizarQuando: ["Instabilidade mecanica documentada", "Falha de abordagem nao cirurgica"],
+        pontoDeControle: "Conferir indicacao de fusao e niveis alvo.",
+        perguntasImportantes: ["Existe espondilolistese documentada?", "Ha risco de pseudoartrose aumentado?"],
+        referencias: [
+          { titulo: "Choosing Wisely - Fusion", link: "https://www.choosingwisely.org/" },
+          { titulo: "Ghogawala et al. NEJM 2016", link: "https://www.nejm.org/" }
+        ]
+      },
+      {
+        id: "p-mielopatia",
+        nome: "Mielopatia cervical",
+        regiao: "Cervical",
+        autorizarQuando: ["Mielopatia progressiva com imagem compativel", "Impacto funcional em mJOA"],
+        pontoDeControle: "Mensurar mJOA e progressao neurologica.",
+        perguntasImportantes: ["Qual o escore mJOA atual?", "Ha progressao neurologica nas ultimas semanas?"],
+        referencias: [
+          { titulo: "AO Spine - Fehlings 2017", link: "https://www.aofoundation.org/" },
+          { titulo: "Guideline mJOA", link: "https://pubmed.ncbi.nlm.nih.gov/" }
+        ]
+      },
+      {
+        id: "p-fratura",
+        nome: "Fratura toracolombar",
+        regiao: "Toracolombar",
+        autorizarQuando: ["Instabilidade biomecanica por AO/TLICS", "Risco neurologico elevado"],
+        pontoDeControle: "Classificar AO/TLICS e plano de estabilizacao.",
+        perguntasImportantes: ["Qual o escore TLICS?", "Ha deficit neurologico associado?"],
+        referencias: [
+          { titulo: "AO Spine Thoracolumbar", link: "https://www.aofoundation.org/" },
+          { titulo: "Vaccaro TLICS", link: "https://pubmed.ncbi.nlm.nih.gov/" }
+        ]
+      }
+    ],
+    opmeItens: [
+      { id: "i-1", nome: "Parafuso pedicular titanio", codigoInterno: "OP-001", tipo: "Implante", empresa: "Empresa Parceira A", custoUnitario: 2400, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-2", nome: "Haste titanio 5.5", codigoInterno: "OP-002", tipo: "Implante", empresa: "Empresa Parceira A", custoUnitario: 1900, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-3", nome: "Conector transversal", codigoInterno: "OP-003", tipo: "Implante", empresa: "Empresa Parceira B", custoUnitario: 900, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-4", nome: "Cage intersomatico PEEK", codigoInterno: "OP-004", tipo: "Implante", empresa: "Empresa Parceira B", custoUnitario: 3300, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-5", nome: "Placa cervical", codigoInterno: "OP-005", tipo: "Implante", empresa: "Empresa Parceira C", custoUnitario: 4300, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-6", nome: "Parafuso cervical", codigoInterno: "OP-006", tipo: "Implante", empresa: "Empresa Parceira C", custoUnitario: 700, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-7", nome: "Kit endoscopico basico", codigoInterno: "OP-007", tipo: "Instrumental", empresa: "Empresa Parceira A", custoUnitario: 5100, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-8", nome: "Canula de trabalho", codigoInterno: "OP-008", tipo: "Instrumental", empresa: "Empresa Parceira B", custoUnitario: 1850, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-9", nome: "Burr diamantada", codigoInterno: "OP-009", tipo: "Instrumental", empresa: "Empresa Parceira C", custoUnitario: 970, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-10", nome: "Enxerto osseo sintetico", codigoInterno: "OP-010", tipo: "Biologico", empresa: "Empresa Parceira B", custoUnitario: 1600, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-11", nome: "Hemostatico absorvivel", codigoInterno: "OP-011", tipo: "Suporte", empresa: "Empresa Parceira C", custoUnitario: 350, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-12", nome: "Sistema de navegacao descartavel", codigoInterno: "OP-012", tipo: "Tecnologia", empresa: "Empresa Parceira A", custoUnitario: 2100, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-13", nome: "Cage expansivel premium", codigoInterno: "OP-013", tipo: "Implante", empresa: "Empresa Nao Parceira X", custoUnitario: 5900, parceira: false, blacklist: false, blacklistMotivo: "" },
+      { id: "i-14", nome: "Kit parafusos cannulados", codigoInterno: "OP-014", tipo: "Implante", empresa: "Empresa Parceira B", custoUnitario: 3200, parceira: true, blacklist: false, blacklistMotivo: "" },
+      { id: "i-15", nome: "Sistema dinamico interespinhoso", codigoInterno: "OP-015", tipo: "Implante", empresa: "Empresa Nao Parceira X", custoUnitario: 7700, parceira: false, blacklist: true, blacklistMotivo: "Evidencia insuficiente, em revisao pelo conselho" }
+    ],
+    pacotesOpme: [
+      { id: "pk-1", procedimento: "Artrodese lombar", niveis: 1, teto: 22000, itens: [{ itemId: "i-1", qtd: 4 }, { itemId: "i-2", qtd: 2 }, { itemId: "i-4", qtd: 1 }, { itemId: "i-10", qtd: 1 }] },
+      { id: "pk-2", procedimento: "Artrodese lombar", niveis: 2, teto: 32000, itens: [{ itemId: "i-1", qtd: 6 }, { itemId: "i-2", qtd: 2 }, { itemId: "i-3", qtd: 1 }, { itemId: "i-4", qtd: 2 }, { itemId: "i-10", qtd: 1 }] },
+      { id: "pk-3", procedimento: "Artrodese cervical", niveis: 1, teto: 26000, itens: [{ itemId: "i-5", qtd: 1 }, { itemId: "i-6", qtd: 4 }, { itemId: "i-4", qtd: 1 }, { itemId: "i-10", qtd: 1 }] },
+      { id: "pk-4", procedimento: "Endoscopica", niveis: 1, teto: 15000, itens: [{ itemId: "i-7", qtd: 1 }, { itemId: "i-8", qtd: 1 }, { itemId: "i-9", qtd: 1 }, { itemId: "i-11", qtd: 2 }] }
+    ],
+    codigoTuss: [
+      { codigo: "30715024", descricao: "Artrodese de coluna via anterior ou postero-lateral", procedimentoVinculado: "Artrodese cervical", tipo: "Principal", obs: "Principal para fusao" },
+      { codigo: "30715180", descricao: "Instrumentacao de coluna", procedimentoVinculado: "Artrodese lombar", tipo: "Secundario", obs: "Associar ao principal" },
+      { codigo: "30715091", descricao: "Descompressao medular", procedimentoVinculado: "Todos", tipo: "Secundario", obs: "Conforme compressao neural" },
+      { codigo: "30715369", descricao: "Tratamento do canal vertebral estreito", procedimentoVinculado: "Estenose lombar", tipo: "Secundario", obs: "Pode exigir imagem" },
+      { codigo: "30732026", descricao: "Fixacao vertebral segmentar", procedimentoVinculado: "Fratura toracolombar", tipo: "Secundario", obs: "Trauma" },
+      { codigo: "30715393", descricao: "Hernia de disco cervical", procedimentoVinculado: "Artrodese cervical", tipo: "Secundario·exige imagem", obs: "Indicar nivel" },
+      { codigo: "30715059", descricao: "Discectomia lombar", procedimentoVinculado: "Hernia de disco lombar", tipo: "Principal", obs: "Principal em hernia" }
+    ],
+    operadoras: [
+      { id: "op-1", nome: "Operadora Alfa", faturamentoOPME: "operadora", hospitais: ["Hospital Santa Coluna", "Hospital Central Sul", "Hospital Vida Nova"] },
+      { id: "op-2", nome: "Operadora Beta", faturamentoOPME: "hospital", hospitais: ["Hospital Vida Nova", "Hospital Sao Eixo"] },
+      { id: "op-3", nome: "Operadora Gama", faturamentoOPME: "operadora", hospitais: ["Hospital Sao Eixo", "Hospital Santa Coluna"] },
+      { id: "op-4", nome: "Operadora Delta", faturamentoOPME: "hospital", hospitais: ["Hospital Metropolitano", "Hospital Central Sul"] },
+      { id: "op-5", nome: "Operadora Omega", faturamentoOPME: "operadora", hospitais: ["Hospital Santa Coluna", "Hospital Metropolitano"] }
+    ],
+    pedidos: [],
+    rangeVersions: [],
+    auditTrail: []
+  };
+}
+
+function readLocalDb() {
+  try {
+    const raw = localStorage.getItem(LOCAL_DB_KEY);
+    if (!raw) {
+      const seeded = localSeedData();
+      localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(seeded));
+      return seeded;
+    }
+    return JSON.parse(raw);
+  } catch {
+    const seeded = localSeedData();
+    localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+}
+
+function writeLocalDb(db) {
+  localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(db));
+}
+
+function localTokenForUser(user) {
+  return btoa(JSON.stringify({ userId: user.id, role: user.role, exp: Date.now() + 1000 * 60 * 60 * 12 }));
+}
+
+function localUserFromToken(db, token) {
+  if (!token) return null;
+  try {
+    const decoded = JSON.parse(atob(token));
+    if (!decoded.exp || decoded.exp < Date.now()) return null;
+    return db.users.find((u) => u.id === decoded.userId) || null;
+  } catch {
+    return null;
+  }
+}
+
+function localNormalizeRoleData(role, db) {
+  const base = {
+    protocolos: db.protocolos,
+    operadoras: db.operadoras,
+    pacotesOpme: db.pacotesOpme,
+    codigoTuss: db.codigoTuss
+  };
+  if (role === "medico" || role === "hospital") {
+    return {
+      ...base,
+      opmeItens: db.opmeItens.map((item) => ({
+        id: item.id,
+        nome: item.nome,
+        codigoInterno: item.codigoInterno,
+        tipo: item.tipo,
+        empresa: item.empresa,
+        parceira: item.parceira,
+        blacklist: item.blacklist,
+        blacklistMotivo: item.blacklistMotivo
+      }))
+    };
+  }
+  return { ...base, opmeItens: db.opmeItens };
+}
+
+function localCheckTussForProcedure(codigosTuss, procedimento, db) {
+  const valid = db.codigoTuss.filter(
+    (t) => t.procedimentoVinculado === "Todos" || procedimento.includes(t.procedimentoVinculado) || t.procedimentoVinculado.includes(procedimento)
+  );
+  const set = new Set(valid.map((item) => item.codigo));
+  return (codigosTuss || []).some((c) => set.has(c));
+}
+
+function localComputePedido(body, db) {
+  const pacote = db.pacotesOpme.find((p) => p.procedimento === body.procedimento && Number(p.niveis) === Number(body.niveis));
+  const itens = Array.isArray(body.itensOPME) ? body.itensOPME : [];
+
+  let custoTotal = 0;
+  let temBlacklist = false;
+  let temNaoParceira = false;
+
+  itens.forEach((entry) => {
+    const item = db.opmeItens.find((op) => op.id === entry.itemId);
+    if (!item) return;
+    custoTotal += Number(item.custoUnitario || 0) * Number(entry.qtd || 0);
+    temBlacklist = temBlacklist || Boolean(item.blacklist);
+    temNaoParceira = temNaoParceira || !item.parceira;
+  });
+
+  const perguntasSemResposta = (body.perguntasImportantes || [])
+    .filter((item) => !String(item.r || "").trim())
+    .map((item) => item.q);
+
+  const criterioUrgencia = hasUrgencyCriteria(body.urgenciaFlags || {});
+  const farolResult = localEvaluateFarol({
+    carater: body.carater,
+    temCriterioUrgencia: criterioUrgencia,
+    protocoloId: body.protocoloId,
+    relato: body.relato,
+    flags: body.dossieFlags || {},
+    perguntasObrigatoriasSemResposta: perguntasSemResposta,
+    tussExiste: localCheckTussForProcedure(body.codigosTuss || [], body.procedimento || "", db),
+    temBlacklist,
+    temNaoParceira,
+    acimaTeto: pacote ? custoTotal > Number(pacote.teto || 0) : false
+  });
+
+  return {
+    ...farolResult,
+    custoTotal,
+    criterioUrgencia,
+    pacoteId: pacote?.id || null,
+    tetoPacote: pacote?.teto || null,
+    acimaTeto: pacote ? custoTotal > Number(pacote.teto || 0) : false
+  };
+}
+
+function localJson(status, payload) {
+  if (status >= 400) {
+    throw new Error(payload.error || "Falha de comunicacao");
+  }
+  return payload;
+}
+
+async function localApi(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const body = options.body ? JSON.parse(options.body) : {};
+  const db = readLocalDb();
+  const authUser = localUserFromToken(db, state.token);
+
+  if (method === "POST" && path === "/api/auth/login") {
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const user = db.users.find((u) => u.email === email && u.password === password);
+    if (!user) return localJson(401, { error: "Credenciais invalidas." });
+    const token = localTokenForUser(user);
+    return localJson(200, { token, user: { id: user.id, role: user.role, nome: user.nome, email: user.email } });
+  }
+
+  if (path.startsWith("/api/") && !authUser) {
+    return localJson(401, { error: "Nao autenticado." });
+  }
+
+  if (method === "GET" && path === "/api/auth/me") {
+    return localJson(200, { user: { id: authUser.id, role: authUser.role, nome: authUser.nome, email: authUser.email } });
+  }
+
+  if (method === "GET" && path === "/api/bootstrap") {
+    return localJson(200, localNormalizeRoleData(authUser.role, db));
+  }
+
+  if (method === "POST" && path === "/api/pedidos/preview") {
+    return localJson(200, localComputePedido(body, db));
+  }
+
+  if (method === "POST" && path === "/api/pedidos") {
+    const calc = localComputePedido(body, db);
+    const seq = db.pedidos.length ? Math.max(...db.pedidos.map((p) => Number(p.seq))) + 1 : 1001;
+    const pedido = {
+      id: `ped-${seq}`,
+      seq,
+      medico: body.medico,
+      medicoUserId: authUser.id,
+      pacientePseudonimizado: body.pacientePseudonimizado,
+      operadora: body.operadora,
+      carteirinha: body.carteirinha,
+      hospital: body.hospital,
+      carater: body.carater,
+      preenchidoPorPS: body.preenchidoPorPS || "",
+      temMedicoAssistente: body.temMedicoAssistente || "",
+      relato: body.relato,
+      cid: body.cid,
+      protocoloId: body.protocoloId,
+      respostasPerguntas: body.perguntasImportantes || [],
+      procedimento: body.procedimento,
+      niveis: Number(body.niveis || 1),
+      codigosTuss: body.codigosTuss || [],
+      itensOPME: body.itensOPME || [],
+      custoTotalCalculado: calc.custoTotal,
+      farol: calc.farol,
+      titulo: calc.titulo,
+      racional: calc.subtitulo,
+      pendencias: calc.pendencias,
+      status: calc.farol === "r" && calc.titulo !== "Fluxo de urgencia" ? "2a opiniao" : localStatusFromFarol(calc.farol),
+      urgenciaCriterioPresente: calc.criterioUrgencia,
+      pacoteId: calc.pacoteId,
+      tetoPacote: calc.tetoPacote,
+      acimaTeto: calc.acimaTeto,
+      referencias: (db.protocolos.find((p) => p.id === body.protocoloId)?.referencias || []),
+      regraVersao: `${calc.pacoteId || "sem-pacote"}@${new Date().toISOString().slice(0, 10)}`,
+      data: new Date().toISOString()
+    };
+    db.pedidos.push(pedido);
+    db.auditTrail.push({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      at: new Date().toISOString(),
+      userId: authUser.id,
+      action: "pedido.autorizacao",
+      details: { pedidoId: pedido.id, farol: pedido.farol, regraVersao: pedido.regraVersao }
+    });
+    writeLocalDb(db);
+    return localJson(201, { pedido });
+  }
+
+  if (method === "GET" && path === "/api/pedidos") {
+    let pedidos = db.pedidos;
+    if (authUser.role === "medico") pedidos = pedidos.filter((p) => p.medicoUserId === authUser.id);
+    if (authUser.role === "hospital") pedidos = pedidos.filter((p) => p.hospital === authUser.hospitalPadrao || p.carater === "Urgencia");
+    return localJson(200, { pedidos });
+  }
+
+  if (method === "DELETE" && path === "/api/pedidos/mine") {
+    db.pedidos = db.pedidos.filter((p) => p.medicoUserId !== authUser.id);
+    db.auditTrail.push({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      at: new Date().toISOString(),
+      userId: authUser.id,
+      action: "pedido.clear.mine",
+      details: {}
+    });
+    writeLocalDb(db);
+    return localJson(200, { ok: true });
+  }
+
+  if (method === "GET" && path === "/api/operadora/kpis") {
+    const pedidos = db.pedidos;
+    const total = pedidos.length || 1;
+    const verdes = pedidos.filter((p) => p.farol === "g").length;
+    const custoMedio = pedidos.reduce((acc, p) => acc + Number(p.custoTotalCalculado || 0), 0) / total;
+    const foraPadrao = pedidos.filter((p) => p.farol !== "g").length;
+    return localJson(200, { total: pedidos.length, percentualVerde: (verdes / total) * 100, custoMedio, foraPadrao });
+  }
+
+  if (method === "GET" && path === "/api/hospital/urgencias") {
+    const urgencias = db.pedidos.filter((p) => p.carater === "Urgencia");
+    return localJson(200, { urgencias });
+  }
+
+  if (method === "GET" && path === "/api/admin/all") {
+    return localJson(200, { protocolos: db.protocolos, opmeItens: db.opmeItens, pacotesOpme: db.pacotesOpme, codigoTuss: db.codigoTuss, auditTrail: db.auditTrail });
+  }
+
+  if (method === "POST" && path === "/api/admin/protocolos") {
+    const proto = {
+      id: `p-${Date.now()}`,
+      nome: body.nome,
+      regiao: body.regiao,
+      autorizarQuando: body.autorizarQuando || [],
+      pontoDeControle: body.pontoDeControle || "",
+      perguntasImportantes: body.perguntasImportantes || [],
+      referencias: body.referencias || []
+    };
+    db.protocolos.push(proto);
+    writeLocalDb(db);
+    return localJson(201, { protocolo: proto });
+  }
+
+  if (method === "DELETE" && path.startsWith("/api/admin/protocolos/")) {
+    const id = decodeURIComponent(path.split("/").pop());
+    db.protocolos = db.protocolos.filter((p) => p.id !== id);
+    writeLocalDb(db);
+    return localJson(200, { ok: true });
+  }
+
+  if (method === "POST" && path === "/api/admin/opme-itens") {
+    const item = {
+      id: `i-${Date.now()}`,
+      nome: body.nome,
+      codigoInterno: body.codigoInterno,
+      tipo: body.tipo,
+      empresa: body.empresa,
+      custoUnitario: Number(body.custoUnitario || 0),
+      parceira: Boolean(body.parceira),
+      blacklist: Boolean(body.blacklist),
+      blacklistMotivo: body.blacklistMotivo || ""
+    };
+    db.opmeItens.push(item);
+    writeLocalDb(db);
+    return localJson(201, { item });
+  }
+
+  if (method === "DELETE" && path.startsWith("/api/admin/opme-itens/")) {
+    const id = decodeURIComponent(path.split("/").pop());
+    db.opmeItens = db.opmeItens.filter((p) => p.id !== id);
+    db.pacotesOpme = db.pacotesOpme.map((pk) => ({ ...pk, itens: (pk.itens || []).filter((it) => it.itemId !== id) }));
+    writeLocalDb(db);
+    return localJson(200, { ok: true });
+  }
+
+  if (method === "POST" && path === "/api/admin/pacotes-opme") {
+    const keyProc = String(body.procedimento || "").trim();
+    const keyNiveis = Number(body.niveis || 1);
+    const payload = {
+      id: `pk-${Date.now()}`,
+      procedimento: keyProc,
+      niveis: keyNiveis,
+      teto: Number(body.teto || 0),
+      itens: body.itens || []
+    };
+    const idx = db.pacotesOpme.findIndex((p) => p.procedimento === keyProc && Number(p.niveis) === keyNiveis);
+    if (idx >= 0) db.pacotesOpme[idx] = { ...db.pacotesOpme[idx], ...payload };
+    else db.pacotesOpme.push(payload);
+    db.rangeVersions.push({ id: `rv-${Date.now()}`, at: new Date().toISOString(), regra: `${keyProc}-${keyNiveis}` });
+    writeLocalDb(db);
+    return localJson(201, { pacote: payload });
+  }
+
+  if (method === "POST" && path === "/api/admin/tuss") {
+    db.codigoTuss = db.codigoTuss.filter((t) => t.codigo !== body.codigo);
+    const novo = {
+      codigo: String(body.codigo || "").trim(),
+      descricao: body.descricao || "",
+      procedimentoVinculado: body.procedimentoVinculado || "Todos",
+      tipo: body.tipo || "Secundario",
+      obs: body.obs || ""
+    };
+    db.codigoTuss.push(novo);
+    writeLocalDb(db);
+    return localJson(201, { tuss: novo });
+  }
+
+  if (method === "DELETE" && path.startsWith("/api/admin/tuss/")) {
+    const codigo = decodeURIComponent(path.split("/").pop());
+    db.codigoTuss = db.codigoTuss.filter((t) => t.codigo !== codigo);
+    writeLocalDb(db);
+    return localJson(200, { ok: true });
+  }
+
+  return localJson(404, { error: "Rota nao encontrada." });
+}
+
+function activateLocalMode() {
+  state.apiMode = "local";
+  if (!state.localModeNotified) {
+    state.localModeNotified = true;
+    showToast("Modo online indisponivel neste dominio. Usando modo local persistido no navegador.");
+  }
+}
+
 async function api(path, options = {}) {
+  if (state.apiMode === "local") {
+    return localApi(path, options);
+  }
+
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {})
@@ -83,12 +666,21 @@ async function api(path, options = {}) {
     headers.Authorization = `Bearer ${state.token}`;
   }
 
-  const response = await fetch(path, { ...options, headers });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || "Falha de comunicacao");
+  try {
+    const response = await fetch(path, { ...options, headers });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 405 || response.status >= 500) {
+        activateLocalMode();
+        return localApi(path, options);
+      }
+      throw new Error(data.error || "Falha de comunicacao");
+    }
+    return data;
+  } catch (error) {
+    activateLocalMode();
+    return localApi(path, options);
   }
-  return data;
 }
 
 function getMedicoProfile() {
