@@ -1,2099 +1,1115 @@
-﻿const STORAGE_KEY_LESIONS = "simplecoluna.lesoes.v1";
-const SESSION_KEY_AUTH = "simplecoluna.session.auth.v1";
-const AUTH_LOGIN = "administracao@simplecoluna.com";
-const AUTH_LOGIN_ALIASES = ["administracao@simplecoluna.com", "admistracao@simplecoluna.com"];
-const AUTH_PASSWORD = "simplecoluna";
-const STORAGE_KEY_REQUEST_HISTORY = "simplecoluna.requests.v1";
-const STORAGE_KEY_FOCUS_MODE = "simplecoluna.landing.focus.v1";
-const STORAGE_KEY_ACCESS_PROGRESS = "simplecoluna.landing.access-progress.v1";
-const NEGATIVE_TUSS_CODES = ["30715270", "30715210", "30715199", "30715261", "31401260"];
-const CFM_SEARCH_BASE_URL = "https://portal.cfm.org.br/busca-medicos/";
-const CFM_PROXY_BASE_URL = "https://r.jina.ai/http://portal.cfm.org.br/busca-medicos/";
-const SAMPLE_DOCTOR_RANKING = [
-  {
-    doctorName: "Dra. Carla Fernandes",
-    crm: "527596/RJ",
-    requests: 18,
-    score: 92,
-    scoreDetails: "Exemplo: 18 documentos (criados/auditados), alta completude tecnica e baixa intercorrencia."
-  },
-  {
-    doctorName: "Dr. Renato Almeida",
-    crm: "184233/SP",
-    requests: 12,
-    score: 84,
-    scoreDetails: "Exemplo: boa qualidade documental, com pequenas pendencias de codificacao."
-  },
-  {
-    doctorName: "Dra. Juliana Mota",
-    crm: "90311/MG",
-    requests: 9,
-    score: 76,
-    scoreDetails: "Exemplo: performance regular, com mais necessidade de ajuste em TUSS/OPME."
-  }
-];
+﻿const TOKEN_KEY = "simplecoluna.auth.token.v2";
+const MEDICO_PROFILE_KEY = "simplecoluna.medico.profile.v2";
 
-const FALLBACK_LESIONS = [
-  {
-    id: "hernia-lombar",
-    nome: "Hernia de disco lombar com radiculopatia",
-    regiao: "lombar",
-    sinais_alerta: "Dor irradiada, deficit motor progressivo, falha de tratamento conservador",
-    exame_sugerido: "Ressonancia magnetica da coluna lombar",
-    tecnica_possivel: "Microdiscectomia (avaliar indicacao clinica)",
-    observacoes: "Correlacionar com distribuicao dermatomerica e deficit neurologico.",
-    materiais: [
-      { item: "Retrator tubular", codigo: "OPME-LB-101", tipo: "Instrumental" },
-      { item: "Pinca pituitaria", codigo: "OPME-LB-104", tipo: "Instrumental" }
-    ]
-  },
-  {
-    id: "estenose-lombar",
-    nome: "Estenose lombar degenerativa",
-    regiao: "lombar",
-    sinais_alerta: "Claudicacao neurogenica, limitacao funcional importante",
-    exame_sugerido: "Ressonancia magnetica e radiografias dinamicas",
-    tecnica_possivel: "Descompressao com ou sem artrodese",
-    observacoes: "Avaliar estabilidade segmentar pre-operatoria.",
-    materiais: [
-      { item: "Sistema de parafuso pedicular", codigo: "OPME-LB-201", tipo: "Implante" },
-      { item: "Haste de titanio", codigo: "OPME-LB-204", tipo: "Implante" }
-    ]
-  },
-  {
-    id: "mielopatia-cervical",
-    nome: "Mielopatia cervical espondilotica",
-    regiao: "cervical",
-    sinais_alerta: "Alteracao de marcha, hiperreflexia, perda de destreza",
-    exame_sugerido: "Ressonancia magnetica cervical",
-    tecnica_possivel: "Descompressao cervical anterior ou posterior",
-    observacoes: "Sinais longos de trato piramidal aumentam urgencia de avaliacao.",
-    materiais: [
-      { item: "Placa cervical", codigo: "OPME-CV-305", tipo: "Implante" },
-      { item: "Cage cervical", codigo: "OPME-CV-309", tipo: "Implante" }
-    ]
-  },
-  {
-    id: "fratura-toracolombar",
-    nome: "Fratura toracolombar instavel",
-    regiao: "toracica",
-    sinais_alerta: "Trauma de alta energia, dor intensa, suspeita de instabilidade",
-    exame_sugerido: "Tomografia com reconstrucao e ressonancia quando indicada",
-    tecnica_possivel: "Fixacao posterior segmentar",
-    observacoes: "Classificar padrao da fratura e risco neurologico.",
-    materiais: [
-      { item: "Parafuso pedicular canulado", codigo: "OPME-TL-401", tipo: "Implante" },
-      { item: "Conector transversal", codigo: "OPME-TL-408", tipo: "Implante" }
-    ]
-  }
-];
-
-const ALLOWED_COMPANIES = ["STRYKER", "SMITH NEPHEW", "JOHNSON", "ZIMMER", "MEDTRONIC", "SATRATTNER", "HANDLE"];
-
-const SURGERY_PROTOCOLS = {
-  cervical: {
-    label: "Artrodese de coluna cervical via anterior ou postero-lateral",
-    defaultCid: "M50.1",
-    procedure:
-      "Artrodese de coluna cervical via anterior ou postero-lateral com descompressao neural e estabilizacao por segmento.",
-    tuss: [
-      {
-        codigo: "30715024",
-        descricao: "Artrodese de coluna via anterior ou postero-lateral",
-        multiplicarPorNivel: true,
-        aplicacao:
-          "Realizacao da artrodese dos niveis cervicais abordados para estabilizacao mecanica do segmento."
-      },
-      {
-        codigo: "30715393",
-        descricao: "Hernia de disco cervical",
-        multiplicarPorNivel: true,
-        aplicacao:
-          "Tratamento cirurgico da patologia discal cervical no(s) nivel(is) planejado(s)."
-      },
-      {
-        codigo: "30715091",
-        descricao: "Descompressao medular",
-        multiplicarPorNivel: true,
-        aplicacao:
-          "Descompressao das estruturas neurais comprimidas com objetivo de alivio neurologico."
-      },
-      {
-        codigo: "30715369",
-        descricao: "Tratamento do canal vertebral estreito",
-        multiplicarPorNivel: false,
-        aplicacao:
-          "Ampliacao do canal vertebral em estenose comprovada por imagem para reducao da compressao."
-      }
-    ],
-    opmeByLevel: {
-      1: [
-        "04 Parafusos",
-        "01 Placa cervical de bloqueio",
-        "01 Espacador intersomatico cervical",
-        "01 Enxerto osseo",
-        "01 Pinca bipolar"
-      ],
-      2: [
-        "06 Parafusos",
-        "01 Placa cervical de bloqueio",
-        "02 Espacadores intersomaticos cervicais",
-        "01 Enxerto osseo",
-        "01 Pinca bipolar"
-      ],
-      3: [
-        "08 Parafusos",
-        "01 Placa cervical de bloqueio",
-        "03 Espacadores intersomaticos cervicais",
-        "01 Enxerto osseo",
-        "01 Pinca bipolar"
-      ]
-    },
-    opmeKeywords: ["placa cervical", "espacador intersomatico", "enxerto osseo", "pinca bipolar"]
-  },
-  lombar: {
-    label: "Artrodese de coluna lombar via anterior ou postero-lateral",
-    defaultCid: "M51.1",
-    procedure:
-      "Artrodese lombar com descompressao neural e instrumentacao segmentar para estabilizacao biomecanica.",
-    tuss: [
-      {
-        codigo: "30715024",
-        descricao: "Artrodese de coluna via anterior ou postero-lateral",
-        multiplicarPorNivel: true,
-        aplicacao:
-          "Realizacao da artrodese lombar no(s) segmento(s) acometido(s), com consolidacao planejada."
-      },
-      {
-        codigo: "30715180",
-        descricao: "Hernia de disco lombar",
-        multiplicarPorNivel: true,
-        aplicacao:
-          "Tratamento cirurgico da patologia discal lombar correlata ao quadro clinico-radiologico."
-      },
-      {
-        codigo: "30715091",
-        descricao: "Descompressao medular",
-        multiplicarPorNivel: true,
-        aplicacao:
-          "Descompressao das estruturas neurais comprimidas para alivio de dor e deficit neurologico."
-      },
-      {
-        codigo: "30715369",
-        descricao: "Tratamento do canal vertebral estreito",
-        multiplicarPorNivel: false,
-        aplicacao:
-          "Tratamento da estenose do canal vertebral com base em comprovacao por imagem."
-      }
-    ],
-    opmeByLevel: {
-      1: [
-        "02 Hastes verticais",
-        "04 Parafusos",
-        "04 Bloqueadores",
-        "01 Espacador intersomatico lombar",
-        "01 Enxerto osseo",
-        "01 Pinca bipolar"
-      ],
-      2: [
-        "02 Hastes verticais",
-        "06 Parafusos",
-        "06 Bloqueadores",
-        "01 Conector transverso",
-        "02 Espacadores intersomaticos lombares",
-        "01 Enxerto osseo",
-        "01 Pinca bipolar"
-      ],
-      3: [
-        "02 Hastes verticais",
-        "08 Parafusos",
-        "08 Bloqueadores",
-        "01 Conector transverso",
-        "03 Espacadores intersomaticos lombares",
-        "01 Enxerto osseo",
-        "01 Pinca bipolar"
-      ]
-    },
-    opmeKeywords: ["haste", "parafuso", "bloqueador", "conector transverso", "espacador intersomatico"]
-  },
-  endoscopica: {
-    label: "Cirurgia endoscopica de coluna",
-    defaultCid: "M51.1",
-    procedure:
-      "Cirurgia endoscopica de coluna com acesso percutaneo e descompressao dirigida da estrutura neural acometida.",
-    tuss: [
-      {
-        codigo: "30715059",
-        descricao: "Cirurgia endoscopica de coluna",
-        multiplicarPorNivel: false,
-        aplicacao: "Execucao do acesso endoscopico e tratamento do segmento alvo por tecnica minimamente invasiva."
-      },
-      {
-        codigo: "30715180",
-        descricao: "Hernia de disco lombar",
-        multiplicarPorNivel: false,
-        aplicacao: "Resseccao da hernia discal por via endoscopica com descompressao neural direta."
-      },
-      {
-        codigo: "30715091",
-        descricao: "Descompressao medular",
-        multiplicarPorNivel: false,
-        aplicacao: "Descompressao do canal e do recesso lateral conforme alvo radiologico e clinico."
-      },
-      {
-        codigo: "30715369",
-        descricao: "Tratamento do canal vertebral estreito",
-        multiplicarPorNivel: false,
-        aplicacao: "Tratamento da estenose vertebral em contexto de cirurgia endoscopica."
-      }
-    ],
-    opmeByLevel: {
-      1: [
-        "01 Kit de acesso percutaneo",
-        "01 Eletrodo bipolar",
-        "01 Broca cortante",
-        "01 Broca diamantada",
-        "Kit Spine Cut"
-      ]
-    },
-    opmeKeywords: ["kit de acesso percutaneo", "eletrodo bipolar", "broca cortante", "broca diamantada", "spine cut"]
+const state = {
+  token: localStorage.getItem(TOKEN_KEY) || "",
+  user: null,
+  navItems: [],
+  activeScreen: "",
+  bootstrap: null,
+  pedidos: [],
+  farolPreview: null,
+  medicoDraft: {
+    carater: "Eletiva",
+    procedimento: "",
+    niveis: 1,
+    codigosTuss: [],
+    itensOPME: [],
+    perguntasImportantes: [],
+    urgenciaFlags: {
+      deficitProgressivo: false,
+      caudaEquinaOuCompressao: false,
+      fraturaInstavel: false,
+      infeccaoOuTumor: false
+    }
   }
 };
 
-const ALL_VALID_TUSS = new Set(
-  Object.values(SURGERY_PROTOCOLS)
-    .flatMap((config) => config.tuss)
-    .map((item) => item.codigo)
-);
+const roleScreens = {
+  medico: [
+    { id: "novo-pedido", title: "Novo pedido", subtitle: "Fluxo em 4 passos com farol de autorizacao." },
+    { id: "meus-pedidos", title: "Meus pedidos", subtitle: "Historico e exportacao dos seus pedidos." },
+    { id: "meu-desempenho", title: "Meu desempenho", subtitle: "Percentis privados com trava minima de casos." },
+    { id: "protocolos-duvidas", title: "Protocolos e duvidas", subtitle: "Consulta read-only das regras clinicas." }
+  ],
+  operadora: [
+    { id: "visao-geral", title: "Visao geral", subtitle: "KPIs reais e governanca de comunicacao." },
+    { id: "fila-autorizacao", title: "Fila de autorizacao", subtitle: "Custos e racional do farol por pedido." },
+    { id: "regras-range", title: "Regras e range", subtitle: "Tetos por pacote e comportamento do motor." }
+  ],
+  hospital: [
+    { id: "fila-pedidos", title: "Fila de pedidos", subtitle: "Acoes por farol para o centro cirurgico." },
+    { id: "urgencias", title: "Urgencias (PS)", subtitle: "Conduta imediata e revisao retrospectiva." }
+  ],
+  admin: [
+    { id: "admin-protocolos", title: "Protocolos e referencias", subtitle: "CRUD completo de protocolos." },
+    { id: "admin-opme", title: "OPME (itens e pacotes)", subtitle: "CRUD de itens, blacklist e tetos por pacote." },
+    { id: "admin-tuss", title: "Codigos TUSS", subtitle: "CRUD de codigos vinculados a procedimentos." }
+  ]
+};
 
-let lesions = [];
-
-const searchInput = document.querySelector("#searchInput");
-const regionFilter = document.querySelector("#regionFilter");
-const lesionGrid = document.querySelector("#lesionGrid");
-const resultCount = document.querySelector("#resultCount");
-const materialsTableBody = document.querySelector("#materialsTableBody");
-
-const adminToggleBtn = document.querySelector("#adminToggleBtn");
-const adminSection = document.querySelector("#adminSection");
-const enterPlatformBtn = document.querySelector("#enterPlatformBtn");
-const loginGate = document.querySelector("#loginGate");
+const loginView = document.querySelector("#loginView");
+const appView = document.querySelector("#appView");
 const loginForm = document.querySelector("#loginForm");
-const loginEmailInput = document.querySelector("#loginEmailInput");
-const loginPasswordInput = document.querySelector("#loginPasswordInput");
+const loginEmail = document.querySelector("#loginEmail");
+const loginPassword = document.querySelector("#loginPassword");
 const loginFeedback = document.querySelector("#loginFeedback");
-const publicArea = document.querySelector("#publicArea");
-const appArea = document.querySelector("#appArea");
-const focusModeToggle = document.querySelector("#focusModeToggle");
-const journeyAnchorBtn = document.querySelector("#journeyAnchorBtn");
-const topAuthBtn = document.querySelector("#topAuthBtn");
-const finalLoginCta = document.querySelector("#finalLoginCta");
-const quickAccessLoginBtn = document.querySelector("#quickAccessLoginBtn");
-const accessProgressText = document.querySelector("#accessProgressText");
-const accessProgressBar = document.querySelector("#accessProgressBar");
-const accessProgressFill = document.querySelector("#accessProgressFill");
-const accessProgressSteps = document.querySelectorAll("#accessProgressSteps li");
-const internalTabButtons = document.querySelectorAll(".internal-tab-btn");
-const internalTabPanels = document.querySelectorAll(".internal-tab-panel");
+const sidebarNav = document.querySelector("#sidebarNav");
+const content = document.querySelector("#content");
+const screenTitle = document.querySelector("#screenTitle");
+const screenSubtitle = document.querySelector("#screenSubtitle");
+const userRoleTitle = document.querySelector("#userRoleTitle");
+const userName = document.querySelector("#userName");
+const logoutBtn = document.querySelector("#logoutBtn");
 
-const lesionForm = document.querySelector("#lesionForm");
-const editingIdInput = document.querySelector("#editingId");
-const nomeInput = document.querySelector("#nomeInput");
-const regiaoInput = document.querySelector("#regiaoInput");
-const sinaisInput = document.querySelector("#sinaisInput");
-const exameInput = document.querySelector("#exameInput");
-const tecnicaInput = document.querySelector("#tecnicaInput");
-const observacoesInput = document.querySelector("#observacoesInput");
-const materiaisInput = document.querySelector("#materiaisInput");
-const lesionFormFeedback = document.querySelector("#lesionFormFeedback");
-const newLesionBtn = document.querySelector("#newLesionBtn");
-const adminLesionsTableBody = document.querySelector("#adminLesionsTableBody");
-
-const modeQuestionnaireBtn = document.querySelector("#modeQuestionnaireBtn");
-const modeUploadBtn = document.querySelector("#modeUploadBtn");
-const questionnairePanel = document.querySelector("#questionnairePanel");
-const uploadPanel = document.querySelector("#uploadPanel");
-
-const surgeryTypeSelect = document.querySelector("#surgeryTypeSelect");
-const levelsSelect = document.querySelector("#levelsSelect");
-const redFlagNeuroInput = document.querySelector("#redFlagNeuroInput");
-const redFlagCompressionInput = document.querySelector("#redFlagCompressionInput");
-const yellowPainInput = document.querySelector("#yellowPainInput");
-const yellowFailureInput = document.querySelector("#yellowFailureInput");
-const imageProofInput = document.querySelector("#imageProofInput");
-const classHighMorbidityInput = document.querySelector("#classHighMorbidityInput");
-const classComplexAnatomyInput = document.querySelector("#classComplexAnatomyInput");
-const classNeedPrecisionInput = document.querySelector("#classNeedPrecisionInput");
-const classConventionalLimitInput = document.querySelector("#classConventionalLimitInput");
-const functionalLimitationsInput = document.querySelector("#functionalLimitationsInput");
-const cidInput = document.querySelector("#cidInput");
-const mainDiagnosisInput = document.querySelector("#mainDiagnosisInput");
-const techGoalSelect = document.querySelector("#techGoalSelect");
-const generateDecisionBtn = document.querySelector("#generateDecisionBtn");
-const decisionResult = document.querySelector("#decisionResult");
-
-const pedidoFileInput = document.querySelector("#pedidoFileInput");
-const pedidoTextInput = document.querySelector("#pedidoTextInput");
-const analyzePedidoBtn = document.querySelector("#analyzePedidoBtn");
-const uploadResult = document.querySelector("#uploadResult");
-
-const doctorNameInput = document.querySelector("#doctorNameInput");
-const doctorCrmInput = document.querySelector("#doctorCrmInput");
-const doctorUfSelect = document.querySelector("#doctorUfSelect");
-const patientNameInput = document.querySelector("#patientNameInput");
-const patientDocumentInput = document.querySelector("#patientDocumentInput");
-const surgeryDateInput = document.querySelector("#surgeryDateInput");
-const checkCfmBtn = document.querySelector("#checkCfmBtn");
-const doctorSpecialtyInput = document.querySelector("#doctorSpecialtyInput");
-const doctorStatusInput = document.querySelector("#doctorStatusInput");
-const cfmLookupFeedback = document.querySelector("#cfmLookupFeedback");
-
-const outcomeForm = document.querySelector("#outcomeForm");
-const outcomeRequestSelect = document.querySelector("#outcomeRequestSelect");
-const reoperationDateInput = document.querySelector("#reoperationDateInput");
-const negTuss30715270 = document.querySelector("#negTuss30715270");
-const negTuss30715210 = document.querySelector("#negTuss30715210");
-const negTuss30715199 = document.querySelector("#negTuss30715199");
-const negTuss30715261 = document.querySelector("#negTuss30715261");
-const negTuss31401260 = document.querySelector("#negTuss31401260");
-const outcomeFeedback = document.querySelector("#outcomeFeedback");
-const doctorRankingTableBody = document.querySelector("#doctorRankingTableBody");
-
-let activeLesionId = null;
-let uploadedPedidoText = "";
-let latestRequestTemplate = "";
-let latestRequestFileName = "solicitacao-cirurgia.txt";
-let isAuthenticated = false;
-let requestHistory = [];
-let latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
-
-function applyAuthState() {
-  publicArea?.classList.toggle("hidden", isAuthenticated);
-  appArea?.classList.toggle("hidden", !isAuthenticated);
-  loginGate?.classList.toggle("hidden", isAuthenticated);
-
-  if (topAuthBtn) {
-    topAuthBtn.textContent = isAuthenticated ? "Sair" : "Login seguro";
-    topAuthBtn.setAttribute("href", isAuthenticated ? "#" : "#loginGate");
-  }
-
-  if (adminToggleBtn) {
-    adminToggleBtn.disabled = !isAuthenticated;
-    adminToggleBtn.classList.toggle("hidden", !isAuthenticated);
-  }
-
-  if (isAuthenticated && loginFeedback) {
-    loginFeedback.textContent = "Acesso liberado.";
-    loginFeedback.classList.remove("error");
-  }
+function showToast(text) {
+  const tpl = document.querySelector("#toastTemplate");
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  node.textContent = text;
+  document.body.appendChild(node);
+  setTimeout(() => node.remove(), 3400);
 }
 
-function isValidLogin(email, password) {
-  const normalizedEmail = email.trim().toLowerCase();
-  const normalizedPassword = password.trim();
-  const allowedEmails = new Set([AUTH_LOGIN, ...AUTH_LOGIN_ALIASES]);
-  return allowedEmails.has(normalizedEmail) && normalizedPassword === AUTH_PASSWORD;
+function brCurrency(number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(number || 0));
 }
 
-function bindLoginGate() {
-  if (!loginForm || !loginEmailInput || !loginPasswordInput || !loginFeedback) {
-    isAuthenticated = true;
-    applyAuthState();
-    return;
-  }
-
-  isAuthenticated = sessionStorage.getItem(SESSION_KEY_AUTH) === "1";
-  applyAuthState();
-
-  loginForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const email = loginEmailInput?.value || "";
-    const password = loginPasswordInput?.value || "";
-    if (!isValidLogin(email, password)) {
-      isAuthenticated = false;
-      sessionStorage.removeItem(SESSION_KEY_AUTH);
-      loginFeedback.textContent = "Credenciais inválidas. Verifique login e senha.";
-      loginFeedback.classList.add("error");
-      applyAuthState();
-      return;
-    }
-
-    isAuthenticated = true;
-    sessionStorage.setItem(SESSION_KEY_AUTH, "1");
-    loginFeedback.textContent = "Login realizado com sucesso.";
-    loginFeedback.classList.remove("error");
-    loginForm.reset();
-    setInternalTab("build");
-    applyAuthState();
-    appArea?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function normalized(text) {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function toFileSafe(value) {
-  return normalized(value)
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
-function onlyDigits(value) {
-  return String(value || "").replace(/\D/g, "");
-}
-
-function toIsoDate(value) {
-  if (!value) {
-    return "";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return date.toISOString().slice(0, 10);
-}
-
-function daysBetween(isoA, isoB) {
-  const a = new Date(isoA);
-  const b = new Date(isoB);
-  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
-    return null;
-  }
-  return Math.abs(Math.round((b.getTime() - a.getTime()) / 86400000));
-}
-
-function buildCfmLookupUrl(crm, uf) {
-  const params = new URLSearchParams({ crm, uf });
-  return `${CFM_SEARCH_BASE_URL}?${params.toString()}`;
-}
-
-function getRequestContext() {
-  const doctorName = (doctorNameInput?.value || "").trim();
-  const doctorCrm = onlyDigits(doctorCrmInput?.value || "");
-  const doctorUf = (doctorUfSelect?.value || "").trim().toUpperCase();
-  const doctorSpecialty = (doctorSpecialtyInput?.value || "").trim();
-  const doctorStatus = (doctorStatusInput?.value || "").trim();
-  const patientName = (patientNameInput?.value || "").trim();
-  const patientDocument = (patientDocumentInput?.value || "").trim();
-  const surgeryDate = toIsoDate(surgeryDateInput?.value || "");
-
-  return {
-    doctor: {
-      name: doctorName,
-      crm: doctorCrm,
-      uf: doctorUf,
-      specialty: doctorSpecialty,
-      status: doctorStatus,
-      cfm: { ...latestDoctorLookup }
-    },
-    patient: {
-      name: patientName,
-      document: patientDocument
-    },
-    surgeryDate
+async function api(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {})
   };
-}
-
-function validateRequestContext() {
-  const context = getRequestContext();
-  const missing = [];
-  if (!context.doctor.name) missing.push("nome do médico");
-  if (!context.doctor.crm) missing.push("CRM");
-  if (!context.doctor.uf) missing.push("UF do CRM");
-  if (!context.patient.name) missing.push("nome do paciente");
-  if (!context.patient.document) missing.push("documento do paciente");
-  if (!context.surgeryDate) missing.push("data da cirurgia");
-
-  if (missing.length) {
-    return {
-      ok: false,
-      message: `Preencha: ${missing.join(", ")}.`
-    };
+  if (state.token) {
+    headers.Authorization = `Bearer ${state.token}`;
   }
 
-  return { ok: true, context };
+  const response = await fetch(path, { ...options, headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Falha de comunicacao");
+  }
+  return data;
 }
 
-function persistRequestHistory() {
-  localStorage.setItem(STORAGE_KEY_REQUEST_HISTORY, JSON.stringify(requestHistory));
-}
-
-function loadRequestHistory() {
+function getMedicoProfile() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_REQUEST_HISTORY);
-    requestHistory = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(requestHistory)) {
-      requestHistory = [];
-    }
+    return JSON.parse(localStorage.getItem(MEDICO_PROFILE_KEY) || "{}");
   } catch {
-    requestHistory = [];
+    return {};
   }
 }
 
-function registerRequestEntry(payload) {
-  const previousSamePatient = requestHistory.find(
-    (entry) =>
-      normalized(entry.patient.document || "") === normalized(payload.patient.document || "") &&
-      entry.id !== payload.id
-  );
-
-  if (previousSamePatient) {
-    const interval = daysBetween(previousSamePatient.surgeryDate, payload.surgeryDate);
-    if (interval !== null && interval > 10) {
-      payload.outcomes = {
-        ...(payload.outcomes || {}),
-        reoperationUnder90: true,
-        reoperationDate: payload.surgeryDate
-      };
-    }
-  }
-
-  requestHistory.unshift(payload);
-  persistRequestHistory();
-  renderOutcomeRequestOptions();
-  renderDoctorRanking();
+function setMedicoProfile(profile) {
+  localStorage.setItem(MEDICO_PROFILE_KEY, JSON.stringify(profile));
 }
 
-function buildRequestId() {
-  return `PED-${Date.now()}`;
-}
-
-function evaluateEntryScore(entry) {
-  const expectedTussCodes = entry.expectedTussCodes || [];
-  const informedTussCodes = entry.tussCodes || [];
-  const matchedTuss = informedTussCodes.filter((code) => expectedTussCodes.includes(code)).length;
-  const missingTuss = Math.max(expectedTussCodes.length - matchedTuss, 0);
-
-  const expectedOpme = entry.expectedOpmeCount || 1;
-  const informedOpme = entry.opmeItems?.length || 0;
-  const opmeCompleted = informedOpme >= expectedOpme;
-
-  const hasDoctorIdentity =
-    Boolean((entry.doctor?.name || "").trim()) && Boolean((entry.doctor?.crm || "").trim()) && Boolean((entry.doctor?.uf || "").trim());
-  const hasPatientIdentity =
-    Boolean((entry.patient?.name || "").trim()) &&
-    Boolean((entry.patient?.document || "").trim()) &&
-    Boolean((entry.surgeryDate || "").trim());
-
-  const negativeCodes = entry.outcomes?.negativeCodes || [];
-  const complications = negativeCodes.filter((code) => NEGATIVE_TUSS_CODES.includes(code)).length;
-  const hasEarlyReoperation = Boolean(entry.outcomes?.reoperationUnder90);
-
-  const base = 35;
-  const bonusTuss = matchedTuss * 9;
-  const bonusOpme = opmeCompleted ? 12 : 0;
-  const bonusDoctor = hasDoctorIdentity ? 7 : 0;
-  const bonusPatient = hasPatientIdentity ? 7 : 0;
-
-  const penaltyMissingTuss = missingTuss * 10;
-  const penaltyOpme = opmeCompleted ? 0 : 12;
-  const penaltyDoctor = hasDoctorIdentity ? 0 : 8;
-  const penaltyPatient = hasPatientIdentity ? 0 : 8;
-  const penaltyComplications = complications * 20;
-  const penaltyEarlyReoperation = hasEarlyReoperation ? 25 : 0;
-
-  const positive = base + bonusTuss + bonusOpme + bonusDoctor + bonusPatient;
-  const negative =
-    penaltyMissingTuss +
-    penaltyOpme +
-    penaltyDoctor +
-    penaltyPatient +
-    penaltyComplications +
-    penaltyEarlyReoperation;
-  const score = Math.max(0, Math.min(100, Math.round(positive - negative)));
-
-  return {
-    score,
-    complications,
-    hasEarlyReoperation,
-    points: {
-      base,
-      bonusTuss,
-      bonusOpme,
-      bonusDoctor,
-      bonusPatient,
-      penaltyMissingTuss,
-      penaltyOpme,
-      penaltyDoctor,
-      penaltyPatient,
-      penaltyComplications,
-      penaltyEarlyReoperation
-    }
-  };
-}
-
-function rankDoctors() {
-  const groups = new Map();
-
-  requestHistory
-    .filter((entry) => ["criado", "auditado"].includes(entry.documentSource || ""))
-    .forEach((entry) => {
-      const key = `${entry.doctor.crm}-${entry.doctor.uf}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          doctorName: entry.doctor.name,
-          crm: `${entry.doctor.crm}/${entry.doctor.uf}`,
-          requests: 0,
-          scoreSum: 0,
-          complications: 0,
-          earlyReoperations: 0,
-          points: {
-            base: 0,
-            bonusTuss: 0,
-            bonusOpme: 0,
-            bonusDoctor: 0,
-            bonusPatient: 0,
-            penaltyMissingTuss: 0,
-            penaltyOpme: 0,
-            penaltyDoctor: 0,
-            penaltyPatient: 0,
-            penaltyComplications: 0,
-            penaltyEarlyReoperation: 0
-          }
-        });
-      }
-
-      const entryScore = evaluateEntryScore(entry);
-      const doctor = groups.get(key);
-      doctor.requests += 1;
-      doctor.scoreSum += entryScore.score;
-      doctor.complications += entryScore.complications;
-      doctor.earlyReoperations += entryScore.hasEarlyReoperation ? 1 : 0;
-
-      Object.keys(doctor.points).forEach((pointKey) => {
-        doctor.points[pointKey] += entryScore.points[pointKey] || 0;
-      });
-    });
-
-  return [...groups.values()]
-    .map((doctor) => {
-      const score = doctor.requests ? Math.round(doctor.scoreSum / doctor.requests) : 0;
-      const details = [
-        `Base: +${doctor.points.base}`,
-        `Criterios preenchidos: +${doctor.points.bonusTuss + doctor.points.bonusOpme + doctor.points.bonusDoctor + doctor.points.bonusPatient}`,
-        `Pendencias: -${doctor.points.penaltyMissingTuss + doctor.points.penaltyOpme + doctor.points.penaltyDoctor + doctor.points.penaltyPatient}`,
-        `Complicacoes (codigos negativos): -${doctor.points.penaltyComplications}`,
-        `Reabordagem precoce: -${doctor.points.penaltyEarlyReoperation}`
-      ];
-
-      return {
-        ...doctor,
-        score,
-        scoreDetails: details.join(" | ")
-      };
-    })
-    .sort((a, b) => b.score - a.score || b.requests - a.requests);
-}
-
-function renderDoctorRanking() {
-  if (!doctorRankingTableBody) {
+function renderLayout() {
+  if (!state.user) {
+    loginView.classList.remove("hidden");
+    appView.classList.add("hidden");
     return;
   }
 
-  const ranking = rankDoctors();
-  doctorRankingTableBody.innerHTML = "";
+  loginView.classList.add("hidden");
+  appView.classList.remove("hidden");
 
-  const source = ranking.length ? ranking : SAMPLE_DOCTOR_RANKING;
-  source.forEach((item) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${escapeHtml(item.doctorName)}</td>
-      <td>${escapeHtml(item.crm)}</td>
-      <td>${item.requests || 0}</td>
-      <td><strong>${item.score}</strong></td>
-      <td>${escapeHtml(item.scoreDetails)}</td>
-    `;
-    doctorRankingTableBody.appendChild(row);
-  });
-}
+  userRoleTitle.textContent = state.user.role.toUpperCase();
+  userName.textContent = `${state.user.nome} | ${state.user.email}`;
 
-function renderOutcomeRequestOptions() {
-  if (!outcomeRequestSelect) {
-    return;
+  const screens = roleScreens[state.user.role] || [];
+  state.navItems = screens;
+  if (!state.activeScreen || !screens.some((item) => item.id === state.activeScreen)) {
+    state.activeScreen = screens[0]?.id || "";
   }
 
-  const current = outcomeRequestSelect.value;
-  outcomeRequestSelect.innerHTML = "<option value=''>Selecione um pedido registrado</option>";
-
-  requestHistory.forEach((entry) => {
-    const option = document.createElement("option");
-    option.value = entry.id;
-    option.textContent = `${entry.id} - ${entry.doctor.name} / ${entry.patient.name} (${entry.surgeryDate})`;
-    outcomeRequestSelect.appendChild(option);
-  });
-
-  if (current && requestHistory.some((entry) => entry.id === current)) {
-    outcomeRequestSelect.value = current;
-  }
-}
-
-function filteredLesions() {
-  const query = searchInput.value.trim().toLowerCase();
-  const region = regionFilter.value;
-
-  return lesions.filter((lesion) => {
-    const byRegion = !region || lesion.regiao === region;
-    const byQuery =
-      !query ||
-      `${lesion.nome} ${lesion.sinais_alerta} ${lesion.exame_sugerido} ${lesion.tecnica_possivel}`
-        .toLowerCase()
-        .includes(query);
-    return byRegion && byQuery;
-  });
-}
-
-function renderCards() {
-  if (!resultCount || !lesionGrid) {
-    return;
-  }
-
-  const data = filteredLesions();
-  resultCount.textContent = `${data.length} resultado(s)`;
-  lesionGrid.innerHTML = "";
-
-  data.forEach((lesion) => {
-    const card = document.createElement("article");
-    card.className = `lesion-card${activeLesionId === lesion.id ? " active" : ""}`;
-    card.dataset.id = lesion.id;
-    card.innerHTML = `
-      <span class="tag">${escapeHtml(lesion.regiao)}</span>
-      <h3>${escapeHtml(lesion.nome)}</h3>
-      <p><strong>Sinais de alerta:</strong> ${escapeHtml(lesion.sinais_alerta)}</p>
-      <p><strong>Exame sugerido:</strong> ${escapeHtml(lesion.exame_sugerido)}</p>
-      <p><strong>Tecnica possivel:</strong> ${escapeHtml(lesion.tecnica_possivel)}</p>
-    `;
-
-    card.addEventListener("click", () => {
-      activeLesionId = lesion.id;
-      renderCards();
-      renderMaterials();
-    });
-
-    lesionGrid.appendChild(card);
-  });
-
-  if (!data.length) {
-    lesionGrid.innerHTML = "<p>Nenhuma lesao encontrada com os filtros atuais.</p>";
-    activeLesionId = null;
-  }
-}
-
-function renderMaterials() {
-  if (!materialsTableBody) {
-    return;
-  }
-
-  const visibleLesions = filteredLesions();
-  const source = activeLesionId
-    ? visibleLesions.filter((lesion) => lesion.id === activeLesionId)
-    : visibleLesions;
-
-  materialsTableBody.innerHTML = "";
-
-  source.forEach((lesion) => {
-    lesion.materiais.forEach((mat) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${escapeHtml(lesion.nome)}</td>
-        <td>${escapeHtml(mat.item)}</td>
-        <td>${escapeHtml(mat.codigo)}</td>
-        <td>${escapeHtml(mat.tipo)}</td>
-      `;
-      materialsTableBody.appendChild(row);
-    });
-  });
-
-  if (!source.length) {
-    materialsTableBody.innerHTML = "<tr><td colspan='4'>Sem materiais para o filtro atual.</td></tr>";
-  }
-}
-
-function renderAdminTable() {
-  adminLesionsTableBody.innerHTML = "";
-
-  lesions.forEach((lesion) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${escapeHtml(lesion.nome)}</td>
-      <td>${escapeHtml(lesion.regiao)}</td>
-      <td>
-        <div class="admin-row-actions">
-          <button class="admin-btn secondary" type="button" data-action="edit" data-id="${escapeHtml(
-            lesion.id
-          )}">Editar</button>
-          <button class="admin-btn secondary" type="button" data-action="delete" data-id="${escapeHtml(
-            lesion.id
-          )}">Excluir</button>
-        </div>
-      </td>
-    `;
-    adminLesionsTableBody.appendChild(row);
-  });
-
-  if (!lesions.length) {
-    adminLesionsTableBody.innerHTML = "<tr><td colspan='3'>Sem lesoes cadastradas.</td></tr>";
-  }
-}
-
-function bindFilters() {
-  if (!searchInput || !regionFilter) {
-    return;
-  }
-
-  searchInput.addEventListener("input", () => {
-    activeLesionId = null;
-    renderCards();
-    renderMaterials();
-  });
-
-  regionFilter.addEventListener("change", () => {
-    activeLesionId = null;
-    renderCards();
-    renderMaterials();
-  });
-}
-
-function toSlug(value) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
-function parseMateriais(text) {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [item, codigo, tipo] = line.split("|").map((chunk) => chunk.trim());
-      return {
-        item: item || "Material não informado",
-        codigo: codigo || "SEM-CODIGO",
-        tipo: tipo || "Não definido"
-      };
-    });
-}
-
-function materiaisToText(materiais) {
-  return materiais.map((mat) => `${mat.item} | ${mat.codigo} | ${mat.tipo}`).join("\n");
-}
-
-function resetLesionForm() {
-  editingIdInput.value = "";
-  lesionForm.reset();
-  lesionFormFeedback.textContent = "Pronto para novo cadastro.";
-  lesionFormFeedback.classList.remove("error");
-}
-
-function persistLesions() {
-  localStorage.setItem(STORAGE_KEY_LESIONS, JSON.stringify(lesions));
-}
-
-function upsertLesion(payload) {
-  const idx = lesions.findIndex((lesion) => lesion.id === payload.id);
-  if (idx >= 0) {
-    lesions[idx] = payload;
-    return;
-  }
-  lesions.unshift(payload);
-}
-
-function fillFormForEdit(lesion) {
-  editingIdInput.value = lesion.id;
-  nomeInput.value = lesion.nome;
-  regiaoInput.value = lesion.regiao;
-  sinaisInput.value = lesion.sinais_alerta;
-  exameInput.value = lesion.exame_sugerido;
-  tecnicaInput.value = lesion.tecnica_possivel;
-  observacoesInput.value = lesion.observacoes || "";
-  materiaisInput.value = materiaisToText(lesion.materiais || []);
-  lesionFormFeedback.textContent = `Editando: ${lesion.nome}`;
-  lesionFormFeedback.classList.remove("error");
-}
-
-function refreshAllViews() {
-  renderCards();
-  renderMaterials();
-  renderAdminTable();
-}
-
-function bindAdmin() {
-  adminToggleBtn.addEventListener("click", () => {
-    adminSection.classList.toggle("hidden");
-    if (!adminSection.classList.contains("hidden")) {
-      adminSection.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  });
-
-  newLesionBtn.addEventListener("click", () => {
-    resetLesionForm();
-  });
-
-  lesionForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const nome = nomeInput.value.trim();
-    const regiao = regiaoInput.value;
-    const sinais = sinaisInput.value.trim();
-    const exame = exameInput.value.trim();
-    const tecnica = tecnicaInput.value.trim();
-    const observacoes = observacoesInput.value.trim();
-    const materiais = parseMateriais(materiaisInput.value);
-
-    if (!materiais.length) {
-      lesionFormFeedback.textContent = "Informe ao menos 1 material valido.";
-      lesionFormFeedback.classList.add("error");
-      return;
-    }
-
-    const currentId = editingIdInput.value || toSlug(nome);
-    const payload = {
-      id: currentId,
-      nome,
-      regiao,
-      sinais_alerta: sinais,
-      exame_sugerido: exame,
-      tecnica_possivel: tecnica,
-      observacoes,
-      materiais
-    };
-
-    upsertLesion(payload);
-    persistLesions();
-    lesionFormFeedback.textContent = "Lesao salva com sucesso.";
-    lesionFormFeedback.classList.remove("error");
-    refreshAllViews();
-    fillFormForEdit(payload);
-  });
-
-  adminLesionsTableBody.addEventListener("click", (event) => {
-    const btn = event.target.closest("button[data-action]");
-    if (!btn) {
-      return;
-    }
-
-    const id = btn.dataset.id;
-    const action = btn.dataset.action;
-    const lesion = lesions.find((item) => item.id === id);
-    if (!lesion) {
-      return;
-    }
-
-    if (action === "edit") {
-      fillFormForEdit(lesion);
-      return;
-    }
-
-    if (action === "delete") {
-      const confirmed = window.confirm(`Excluir ${lesion.nome}?`);
-      if (!confirmed) {
-        return;
-      }
-
-      lesions = lesions.filter((item) => item.id !== id);
-      if (activeLesionId === id) {
-        activeLesionId = null;
-      }
-
-      persistLesions();
-      resetLesionForm();
-      refreshAllViews();
-    }
-  });
-}
-
-function bindLanding() {
-  enterPlatformBtn?.addEventListener("click", () => {
-    setAccessProgress(3);
-    if (isAuthenticated) {
-      appArea?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    loginGate?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
-  journeyAnchorBtn?.addEventListener("click", () => setAccessProgress(2));
-  topAuthBtn?.addEventListener("click", (event) => {
-    if (isAuthenticated) {
-      event.preventDefault();
-      isAuthenticated = false;
-      sessionStorage.removeItem(SESSION_KEY_AUTH);
-      setAccessProgress(1);
-      applyAuthState();
-      publicArea?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-
-    setAccessProgress(3);
-  });
-  finalLoginCta?.addEventListener("click", () => setAccessProgress(3));
-  quickAccessLoginBtn?.addEventListener("click", () => setAccessProgress(3));
-}
-
-function setAccessProgress(step) {
-  if (!accessProgressText || !accessProgressSteps.length) {
-    return;
-  }
-
-  const normalizedStep = Math.max(1, Math.min(3, Number(step) || 1));
-  accessProgressText.textContent = `Progresso de acesso: ${normalizedStep}/3`;
-
-  const progressPercent = ((normalizedStep - 1) / 2) * 100;
-  if (accessProgressFill) {
-    accessProgressFill.style.width = `${progressPercent}%`;
-  }
-  if (accessProgressBar) {
-    accessProgressBar.setAttribute("aria-valuenow", String(normalizedStep));
-  }
-
-  accessProgressSteps.forEach((item) => {
-    const itemStep = Number(item.dataset.step || "1");
-    item.classList.toggle("active", itemStep === normalizedStep);
-    item.classList.toggle("done", itemStep < normalizedStep);
-  });
-
-  try {
-    localStorage.setItem(STORAGE_KEY_ACCESS_PROGRESS, String(normalizedStep));
-  } catch {
-    // Ignora indisponibilidade de armazenamento local.
-  }
-}
-
-function bindAccessProgress() {
-  if (!accessProgressText || !accessProgressSteps.length) {
-    return;
-  }
-
-  let startStep = 1;
-  try {
-    const saved = Number(localStorage.getItem(STORAGE_KEY_ACCESS_PROGRESS) || "1");
-    if (!Number.isNaN(saved)) {
-      startStep = saved;
-    }
-  } catch {
-    startStep = 1;
-  }
-
-  if (window.location.hash === "#loginGate") {
-    startStep = 3;
-  } else if (window.location.hash === "#landingJourney") {
-    startStep = Math.max(startStep, 2);
-  }
-
-  setAccessProgress(startStep);
-}
-
-function bindFocusMode() {
-  if (!focusModeToggle) {
-    return;
-  }
-
-  try {
-    focusModeToggle.checked = localStorage.getItem(STORAGE_KEY_FOCUS_MODE) === "1";
-  } catch {
-    focusModeToggle.checked = false;
-  }
-
-  focusModeToggle.addEventListener("change", () => {
-    try {
-      localStorage.setItem(STORAGE_KEY_FOCUS_MODE, focusModeToggle.checked ? "1" : "0");
-    } catch {
-      // Ignora falhas de persistencia local sem interromper a interface.
-    }
-  });
-}
-
-function setDecisionMode(mode) {
-  if (!questionnairePanel || !uploadPanel || !modeQuestionnaireBtn || !modeUploadBtn) {
-    return;
-  }
-
-  const questionnaire = mode === "questionnaire";
-  questionnairePanel.classList.toggle("hidden", !questionnaire);
-  uploadPanel.classList.toggle("hidden", questionnaire);
-
-  modeQuestionnaireBtn.classList.toggle("secondary", !questionnaire);
-  modeUploadBtn.classList.toggle("secondary", questionnaire);
-}
-
-function calculateUrgency(flags) {
-  const reasons = [];
-  let track = "4 - Sem indicacao atual";
-  let operationalSignal = "amarelo";
-  let operationalLabel = "Auditar";
-
-  if (flags.neuro || flags.compression) {
-    reasons.push("Risco neurologico com necessidade de priorizacao imediata.");
-    track = "1 - Urgencia absoluta";
-    operationalSignal = "verde";
-    operationalLabel = "Autorizar rapido";
-    return { level: "vermelho", css: "status-red", reasons, track, operationalSignal, operationalLabel };
-  }
-
-  if (flags.intensePain && flags.conservativeFailure && flags.imageProof) {
-    reasons.push("Dor intensa refrataria e falha terapeutica conservadora documentada.");
-    track = "2 - Indicacao provavel";
-    operationalSignal = "verde";
-    operationalLabel = "Autorizar";
-    return { level: "amarelo", css: "status-yellow", reasons, track, operationalSignal, operationalLabel };
-  }
-
-  if (flags.intensePain || flags.conservativeFailure || flags.needPrecision || flags.complexAnatomy) {
-    reasons.push("Indicacao com incerteza parcial, requer auditoria tecnica estruturada.");
-    if (!flags.imageProof) {
-      reasons.push("Imagem compativel ausente no dossie minimo nacional.");
-    }
-    track = "3 - Indicacao duvidosa";
-    operationalSignal = "vermelho";
-    operationalLabel = "Segunda opiniao / painel";
-    return { level: "amarelo", css: "status-yellow", reasons, track, operationalSignal, operationalLabel };
-  }
-
-  reasons.push("Sem sinais de emergencia neurologica no checklist atual.");
-  reasons.push("Priorizar linha conservadora com reavaliacao entre 6 e 12 semanas.");
-  if (!flags.imageProof) {
-    reasons.push("Necessario anexar imagem para robustez tecnica da solicitacao.");
-  }
-  return { level: "verde", css: "status-green", reasons, track, operationalSignal, operationalLabel };
-}
-
-function buildTechnologyRecommendations(flags, techGoal) {
-  const recommendations = [];
-
-  if (flags.complexAnatomy || flags.needPrecision) {
-    recommendations.push(
-      "Cirurgia robotica/navegacao para maior precisao de trajetoria e potencial reducao de fluoroscopia."
-    );
-  }
-
-  if (flags.needPrecision || techGoal === "planejamento") {
-    recommendations.push(
-      "Planejamento 3D com apoio de IA para classificacao e estrategia pre-operatoria baseada em dados."
-    );
-  }
-
-  if (flags.conventionalLimit || techGoal === "tempo") {
-    recommendations.push(
-      "Impressao 3D para modelos/guia com foco em menor tempo de sala e menor trauma cirurgico."
-    );
-  }
-
-  if (techGoal === "formacao") {
-    recommendations.push(
-      "Realidade aumentada/virtual para simulacao de casos complexos e treinamento da equipe."
-    );
-  }
-
-  if (!recommendations.length) {
-    recommendations.push(
-      "Selecionar tecnologia adjuvante conforme objetivo clinico e disponibilidade institucional."
-    );
-  }
-
-  return recommendations;
-}
-
-function buildTussItems(protocol, levels) {
-  return protocol.tuss.map((item) => {
-    const multiplier = item.multiplicarPorNivel && levels > 1 ? ` x${levels}` : "";
-    return {
-      code: item.codigo,
-      title: item.descricao,
-      application: `${item.aplicacao}${multiplier ? ` (niveis: ${levels})` : ""}`
-    };
-  });
-}
-
-function getOpmeForProtocol(protocol, levels) {
-  if (protocol.opmeByLevel[levels]) {
-    return protocol.opmeByLevel[levels];
-  }
-  return protocol.opmeByLevel[1] || [];
-}
-
-function buildSurgeryRequestTemplate(payload) {
-  const tushList = payload.tuss
+  sidebarNav.innerHTML = screens
     .map(
       (item) =>
-        `�?� ${item.code} �?" ${item.title} �?" Aplicacao: ${item.application}`
+        `<button class="nav-link ${state.activeScreen === item.id ? "active" : ""}" data-screen="${item.id}" type="button">${item.title}</button>`
     )
-    .join("\n");
-
-  const opmeList = payload.opme.map((item) => `�?� ${item}`).join("\n");
-
-  return `SOLICITACAO DE CIRURGIA\nMEDICO SOLICITANTE: ${payload.doctorName} | CRM ${payload.doctorCrm}/${payload.doctorUf}\nPACIENTE: ${payload.patientName} | DOCUMENTO: ${payload.patientDocument}\nDATA DA CIRURGIA: ${payload.surgeryDate}\nIDENTIFICACAO E CONTEXTO CLINICO: ${payload.patientContext}\nPATOLOGIA E JUSTIFICATIVA TECNICA: ${payload.justification}\nCID-10:\n�?� ${payload.cid}\nPROCEDIMENTO CIRURGICO PROPOSTO:\n�?� ${payload.procedure}\nCODIGOS TUSS (4 itens cirurgicos, sem condicionalidade):\n${tushList}\nOPME / MATERIAIS CIRURGICOS:\n${opmeList}\n�?� Empresas: ${ALLOWED_COMPANIES.join(", ")}.\nANEXOS (obrigatorio):\nOS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO.`;
-}
-
-function renderQuestionnaireResult(result) {
-  latestRequestTemplate = result.template;
-  latestRequestFileName = `solicitacao-${toFileSafe(result.protocol.label)}-${result.cid || "cid"}.txt`;
-  const reasonsHtml = result.urgency.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("");
-  const tussHtml = result.tuss
-    .map((item) => `<li><strong>${escapeHtml(item.code)}</strong> �?" ${escapeHtml(item.title)}</li>`)
-    .join("");
-  const opmeHtml = result.opme.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  const techHtml = result.technologyRecommendations
-    .map((item) => `<li>${escapeHtml(item)}</li>`)
-    .join("");
-  const operationalCss =
-    result.urgency.operationalSignal === "verde"
-      ? "status-green"
-      : result.urgency.operationalSignal === "amarelo"
-        ? "status-yellow"
-        : "status-red";
-
-  decisionResult.innerHTML = `
-    <span class="status-pill ${result.urgency.css}">Urgencia ${escapeHtml(result.urgency.level)}</span>
-    <span class="status-pill ${operationalCss}">Saida operacional ${escapeHtml(result.urgency.operationalSignal)}</span>
-    <h3>${escapeHtml(result.protocol.label)}</h3>
-    <p><strong>Esteira de entrada:</strong> ${escapeHtml(result.urgency.track)}</p>
-    <p><strong>Acao recomendada:</strong> ${escapeHtml(result.urgency.operationalLabel)}</p>
-    <p><strong>CID-10:</strong> ${escapeHtml(result.cid)}</p>
-    <p><strong>Niveis abordados:</strong> ${escapeHtml(String(result.levels))}</p>
-    <ul>${reasonsHtml}</ul>
-    <p><strong>TUSS sugeridos (4):</strong></p>
-    <ul>${tussHtml}</ul>
-    <p><strong>OPME sugeridos:</strong></p>
-    <ul>${opmeHtml}</ul>
-    <p><strong>Tecnologia recomendada (aula):</strong></p>
-    <ul>${techHtml}</ul>
-    <div class="result-actions">
-      <button id="copyRequestBtn" class="admin-btn secondary" type="button">Copiar solicitação</button>
-      <button id="downloadRequestBtn" class="admin-btn secondary" type="button">Baixar .txt</button>
-    </div>
-    <p><strong>Pedido padronizado:</strong></p>
-    <pre>${escapeHtml(result.template)}</pre>
-  `;
-}
-
-function validateQuestionnaireInputs() {
-  if (!surgeryTypeSelect.value) {
-    decisionResult.innerHTML = "<p>Selecione o tipo de cirurgia para gerar o fluxo.</p>";
-    return null;
-  }
-
-  const contextCheck = validateRequestContext();
-  if (!contextCheck.ok) {
-    decisionResult.innerHTML = `<p>${escapeHtml(contextCheck.message)}</p>`;
-    return null;
-  }
-  const requestContext = contextCheck.context;
-
-  const protocol = SURGERY_PROTOCOLS[surgeryTypeSelect.value];
-  const levels = protocol === SURGERY_PROTOCOLS.endoscopica ? 1 : Number(levelsSelect.value || "1");
-  const cid = (cidInput.value || protocol.defaultCid).trim();
-  const diagnosis = (mainDiagnosisInput.value || protocol.label).trim();
-  const limitations =
-    (functionalLimitationsInput.value ||
-      "Limitacao funcional dolorosa com prejuizo de atividades de vida diaria e capacidade laboral.").trim();
-
-  const flags = {
-    neuro: redFlagNeuroInput.checked,
-    compression: redFlagCompressionInput.checked,
-    intensePain: yellowPainInput.checked,
-    conservativeFailure: yellowFailureInput.checked,
-    imageProof: imageProofInput.checked,
-    highMorbidity: classHighMorbidityInput?.checked || false,
-    complexAnatomy: classComplexAnatomyInput?.checked || false,
-    needPrecision: classNeedPrecisionInput?.checked || false,
-    conventionalLimit: classConventionalLimitInput?.checked || false
-  };
-  const techGoal = techGoalSelect?.value || "";
-
-  const urgency = calculateUrgency(flags);
-  const tuss = buildTussItems(protocol, levels);
-  const opme = getOpmeForProtocol(protocol, levels);
-  const technologyRecommendations = buildTechnologyRecommendations(flags, techGoal);
-
-  const complexityPillars = [];
-  if (flags.highMorbidity) complexityPillars.push("alta morbimortalidade");
-  if (flags.complexAnatomy) complexityPillars.push("anatomia 3D complexa");
-  if (flags.needPrecision) complexityPillars.push("demanda de precisao");
-  if (flags.conventionalLimit) complexityPillars.push("limitacao convencional");
-
-  const patientContext = `${diagnosis}; ${levels} nivel(is) planejado(s); limitacoes funcionais objetivas: ${limitations}`;
-  const justification = `${diagnosis}. ${limitations}. ${
-    flags.conservativeFailure
-      ? "Evolucao com falha de tratamento conservador documentada."
-      : "Evolucao clinica com indicacao cirurgica em discussao especializada."
-  } ${flags.imageProof ? "Comprovacao por imagem disponivel." : "Necessaria confirmacao complementar por imagem para robustez documental."} ${
-    complexityPillars.length ? `Complexidade destacada: ${complexityPillars.join(", ")}.` : ""
-  }`;
-
-  const template = buildSurgeryRequestTemplate({
-    doctorName: requestContext.doctor.name,
-    doctorCrm: requestContext.doctor.crm,
-    doctorUf: requestContext.doctor.uf,
-    patientName: requestContext.patient.name,
-    patientDocument: requestContext.patient.document,
-    surgeryDate: requestContext.surgeryDate,
-    cid,
-    procedure: protocol.procedure,
-    patientContext,
-    justification,
-    tuss,
-    opme
-  });
-
-  return {
-    protocol,
-    levels,
-    cid,
-    urgency,
-    tuss,
-    opme,
-    technologyRecommendations,
-    template,
-    requestContext
-  };
-}
-
-function extractPossibleCid(text) {
-  const matches = text.match(/\b[A-TV-Z][0-9][0-9AB](?:\.[0-9A-Z]{1,2})?\b/gi) || [];
-  return [...new Set(matches.map((item) => item.toUpperCase()))];
-}
-
-function extractTussCodes(text) {
-  const found = text.match(/\b\d{8}\b/g) || [];
-  return [...new Set(found)].filter((code) => ALL_VALID_TUSS.has(code));
-}
-
-function detectProtocolByText(text) {
-  const source = normalized(text);
-
-  if (source.includes("endoscop") || source.includes("30715059") || source.includes("spine cut")) {
-    return SURGERY_PROTOCOLS.endoscopica;
-  }
-  if (source.includes("cervical") || source.includes("30715393") || source.includes("placa cervical")) {
-    return SURGERY_PROTOCOLS.cervical;
-  }
-  if (source.includes("lombar") || source.includes("30715180") || source.includes("haste vertical")) {
-    return SURGERY_PROTOCOLS.lombar;
-  }
-  return null;
-}
-
-function evaluatePedido(text) {
-  const content = text || "";
-  const normalizedContent = normalized(content);
-  const protocol = detectProtocolByText(content);
-
-  const cidFound = extractPossibleCid(content);
-  const tussFound = extractTussCodes(content);
-  const hasProcedureBlock = normalizedContent.includes("procedimento cirurgico proposto");
-  const hasLevels =
-    /\bniveis?\b|\bnivel\b|\bc[0-7]-c[0-7]\b|\bl[1-5]-s1\b|\bl[1-5]-l[1-5]\b|\bt[1-9][0-9]?-[tl][0-9]+\b/i.test(
-      content
-    );
-  const hasImage =
-    normalizedContent.includes("ressonancia") ||
-    normalizedContent.includes("tomografia") ||
-    normalizedContent.includes("tc") ||
-    normalizedContent.includes("imagem") ||
-    normalizedContent.includes("anexo");
-  const hasFunctionalScale =
-    /\beva\b|\bodi\b|\bndi\b|\bmjoa\b|\beq-5d\b|\bpromis\b/i.test(content);
-  const hasPreviousTreatment =
-    normalizedContent.includes("tratamento conservador") ||
-    normalizedContent.includes("fisioterapia") ||
-    normalizedContent.includes("reabilit") ||
-    normalizedContent.includes("infiltr") ||
-    normalizedContent.includes("bloqueio") ||
-    normalizedContent.includes("falha");
-  const hasAnexoPhrase = normalizedContent.includes("os exames comprobatorios do caso estao em anexo");
-  const hasCompanies = ALLOWED_COMPANIES.some((company) => normalizedContent.includes(normalized(company)));
-  const hasOpme = protocol
-    ? protocol.opmeKeywords.some((keyword) => normalizedContent.includes(normalized(keyword)))
-    : normalizedContent.includes("opme") || normalizedContent.includes("material");
-
-  const hasCidAndProcedure = cidFound.length > 0 && hasProcedureBlock;
-  const hasItemizedOpme = hasOpme && (normalizedContent.includes("opme") || normalizedContent.includes("parafuso"));
-
-  const checks = [
-    {
-      ok: hasCidAndProcedure,
-      label: "CID + procedimento"
-    },
-    {
-      ok: hasLevels,
-      label: "Niveis solicitados"
-    },
-    {
-      ok: hasImage,
-      label: "Imagem anexada"
-    },
-    {
-      ok: hasFunctionalScale,
-      label: "Escala funcional"
-    },
-    {
-      ok: hasPreviousTreatment,
-      label: "Tratamento previo"
-    },
-    {
-      ok: hasItemizedOpme,
-      label: "OPME por item"
-    }
-  ];
-
-  const okCount = checks.filter((item) => item.ok).length;
-  const approved = checks.every((item) => item.ok) && tussFound.length >= 4 && hasCompanies && hasAnexoPhrase;
-
-  let operationalSignal = "vermelho";
-  let operationalLabel = "Segunda opiniao / painel";
-
-  if (approved) {
-    operationalSignal = "verde";
-    operationalLabel = "Autoriza";
-  } else if (okCount >= 4) {
-    operationalSignal = "amarelo";
-    operationalLabel = "Audita";
-  }
-
-  return {
-    approved,
-    protocolLabel: protocol?.label || "Não identificado automaticamente",
-    cidFound,
-    tussFound,
-    checks,
-    operationalSignal,
-    operationalLabel,
-    hasCompanies,
-    hasAnexoPhrase
-  };
-}
-
-function buildAlternativePedido(report) {
-  const missingItems = report.checks.filter((item) => !item.ok).map((item) => item.label);
-  const missingTuss = report.tussFound.length >= 4 ? "" : "Incluir 4 codigos TUSS cirurgicos compativeis com o caso.";
-  const missingCompany = report.hasCompanies ? "" : "Inserir empresa permitida (Stryker, Smith Nephew, Johnson, Zimmer, Medtronic, Satrattner, Handle).";
-  const missingAnexo = report.hasAnexoPhrase ? "" : "Adicionar frase final obrigatoria de anexos comprobatórios.";
-
-  const adjustments = [...missingItems, missingTuss, missingCompany, missingAnexo].filter(Boolean);
-
-  return [
-    "VERSAO ALTERNATIVA SUGERIDA PARA AUDITORIA",
-    "",
-    "Ajustes recomendados:",
-    ...adjustments.map((item) => `- ${item}`),
-    "",
-    "Estrutura minima sugerida:",
-    "- CID-10 principal + procedimento cirurgico proposto.",
-    "- Niveis cirurgicos explicitados.",
-    "- Justificativa clinica com falha de tratamento prévio e escala funcional.",
-    "- Lista de OPME por item, com codigos e objetivo tecnico.",
-    "- Bloco final: OS EXAMES COMPROBATORIOS DO CASO ESTAO EM ANEXO."
-  ].join("\n");
-}
-
-function renderUploadResult(report) {
-  const statusClass =
-    report.operationalSignal === "verde"
-      ? "status-green"
-      : report.operationalSignal === "amarelo"
-        ? "status-yellow"
-        : "status-red";
-  const statusText = report.operationalLabel;
-  const checklist = report.checks
-    .map((item) => `<li>${item.ok ? "[OK]" : "[FALTA]"} ${escapeHtml(item.label)}</li>`)
     .join("");
 
-  uploadResult.innerHTML = `
-    <span class="status-pill ${statusClass}">${statusText}</span>
-    <h3>Avaliacao do pedido</h3>
-    <p><strong>Cirurgia detectada:</strong> ${escapeHtml(report.protocolLabel)}</p>
-    <p><strong>CID-10 encontrado:</strong> ${escapeHtml(report.cidFound.join(", ") || "Nenhum")}</p>
-    <p><strong>TUSS encontrados:</strong> ${escapeHtml(report.tussFound.join(", ") || "Nenhum")}</p>
-    <p><strong>Empresa permitida:</strong> ${report.hasCompanies ? "OK" : "FALTA"}</p>
-    <p><strong>Frase final de anexos:</strong> ${report.hasAnexoPhrase ? "OK" : "FALTA"}</p>
-    <ul>${checklist}</ul>
-    <p><strong>Regra da aula:</strong> verde autoriza, amarelo audita, vermelho segunda opiniao/painel.</p>
-  `;
-
-  if (!report.approved) {
-    const alternative = buildAlternativePedido(report);
-    const altBlock = document.createElement("div");
-    altBlock.className = "result-actions";
-    altBlock.innerHTML = `
-      <p><strong>Versão alternativa sugerida:</strong></p>
-      <pre>${escapeHtml(alternative)}</pre>
-    `;
-    uploadResult.appendChild(altBlock);
-  }
-}
-
-function setInternalTab(tabId) {
-  internalTabButtons.forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tab === tabId);
-  });
-
-  internalTabPanels.forEach((panel) => {
-    panel.classList.toggle("active", panel.id === `internalTab-${tabId}`);
-  });
-}
-
-function bindInternalTabs() {
-  if (!internalTabButtons.length || !internalTabPanels.length) {
-    return;
-  }
-
-  internalTabButtons.forEach((btn) => {
+  sidebarNav.querySelectorAll(".nav-link").forEach((btn) => {
     btn.addEventListener("click", () => {
-      setInternalTab(btn.dataset.tab || "build");
+      state.activeScreen = btn.dataset.screen;
+      renderLayout();
+      renderScreen();
     });
   });
 
-  setInternalTab("build");
+  const active = screens.find((item) => item.id === state.activeScreen);
+  screenTitle.textContent = active?.title || "Painel";
+  screenSubtitle.textContent = active?.subtitle || "";
+  renderScreen();
 }
 
-function parseDoctorProfileFromCfmText(text, crm, uf) {
-  const source = String(text || "");
-  const crmUfRegex = new RegExp(`${crm}\\s*\\/?\\s*${uf}`, "i");
-  const nameMatch =
-    source.match(/Nome(?: do medico| do m[e�]dico)?\s*[:\-]\s*([^\n\r|]{6,120})/i) ||
-    source.match(/M[e�]dico\s*[:\-]\s*([^\n\r|]{6,120})/i) ||
-    source.match(new RegExp(`([A-Z�-�][A-Za-z�-�'\\s.-]{6,120})\\s+CRM\\s*[:\\-]?\\s*${crm}`, "i"));
-  const specialtyMatch = source.match(/Especialidade(?: Registrada)?\s*[:\-]\s*([^\n\r|]{3,120})/i);
-  const statusMatch = source.match(/Situa[c�][a�]o(?: da Inscri[c�][a�]o)?\s*[:\-]\s*([^\n\r|]{3,80})/i);
+function parseRelato() {
+  const relato = document.querySelector("#relatoInput")?.value || "";
+  const txt = relato.toLowerCase();
 
-  const clean = (value) =>
-    String(value || "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;|&#160;/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  const isLikelyDoctorName = (value) => /[A-Za-zÀ-ÿ]{3,}/.test(value) && !/[<>]/.test(value);
-  const normalizeTextField = (value, fallback) => {
-    const parsed = clean(value);
-    return /[A-Za-zÀ-ÿ]{2,}/.test(parsed) && !/[<>]/.test(parsed) ? parsed : fallback;
+  const has = (regex) => regex.test(txt);
+  const detections = {
+    escala: has(/eva|odi|ndi|mjoa|oswestry/),
+    imagem: has(/ressonancia|\brm\b|tomografia|\btc\b/),
+    conservador: has(/fisioterapia|conservador|bloqueio|infiltra|falha do tratamento/),
+    correlacao: has(/compativel com a clinica|correlacao|concordan/),
+    urgencia: {
+      deficitProgressivo: has(/deficit progressivo/),
+      caudaEquinaOuCompressao: has(/cauda equina|compressao medular/),
+      fraturaInstavel: has(/fratura instavel|luxacao/),
+      infeccaoOuTumor: has(/abscesso|espondilodiscite|tumor com compress/)
+    }
   };
-  const parsedName = clean(nameMatch?.[1] || "");
-  if (!crmUfRegex.test(source) && !isLikelyDoctorName(parsedName)) {
-    return null;
+
+  const idByName = (name) => state.bootstrap.protocolos.find((p) => p.nome.toLowerCase().includes(name))?.id || "";
+  let suggestedProtocolId = "";
+  if (has(/hernia/) && has(/radiculopatia|lombociatalgia/)) {
+    suggestedProtocolId = idByName("hernia");
+  } else if (has(/claudicacao|estenose/)) {
+    suggestedProtocolId = idByName("estenose");
+  } else if (has(/espondilolistese|instabilidade/)) {
+    suggestedProtocolId = idByName("artrodese");
+  } else if (has(/mielopatia|mjoa/)) {
+    suggestedProtocolId = idByName("mielopatia");
+  } else if (has(/fratura|tlics/)) {
+    suggestedProtocolId = idByName("fratura");
   }
 
-  return {
-    name: isLikelyDoctorName(parsedName) ? parsedName : "",
-    specialty: normalizeTextField(specialtyMatch?.[1], "Não informado"),
-    status: normalizeTextField(statusMatch?.[1], "Ativo")
-  };
+  return { detections, suggestedProtocolId };
 }
 
-async function fetchDoctorProfileFromCfm(crm, uf) {
-  const directUrl = buildCfmLookupUrl(crm, uf);
-  const proxyUrl = `${CFM_PROXY_BASE_URL}?crm=${encodeURIComponent(crm)}&uf=${encodeURIComponent(uf)}`;
-  const attempts = [
-    { url: directUrl, source: "cfm-direto" },
-    { url: proxyUrl, source: "cfm-proxy" }
-  ];
+async function parseFileToText(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".txt")) {
+    return await file.text();
+  }
 
-  const fetchTextWithTimeout = async (url) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-        headers: {
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        }
+  if (name.endsWith(".pdf")) {
+    const ab = await file.arrayBuffer();
+    const pdfjs = globalThis.pdfjsLib;
+    if (!pdfjs) {
+      throw new Error("Leitor PDF indisponivel");
+    }
+
+    const pdf = await pdfjs.getDocument({ data: ab }).promise;
+    let full = "";
+    for (let p = 1; p <= pdf.numPages; p += 1) {
+      const page = await pdf.getPage(p);
+      const text = await page.getTextContent();
+      full += `${text.items.map((it) => it.str).join(" ")}\n`;
+    }
+    return full;
+  }
+
+  throw new Error("Use arquivo PDF ou TXT");
+}
+
+function renderFarolCard(preview, protocolo) {
+  const refs = (protocolo?.referencias || [])
+    .map((ref) => `<a class="pill" href="${ref.link || "#"}" target="_blank" rel="noreferrer">${ref.titulo}</a>`)
+    .join("");
+
+  return `
+    <div class="card">
+      <div class="semaforo">
+        <div class="bulb-wrap">
+          <div class="bulb ${preview.farol === "g" ? "on-g" : ""}"></div>
+          <div class="bulb ${preview.farol === "a" ? "on-a" : ""}"></div>
+          <div class="bulb ${preview.farol === "r" ? "on-r" : ""}"></div>
+        </div>
+        <div>
+          <h3>${preview.titulo}</h3>
+          <p class="muted">${preview.subtitulo}</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <h4>Checklist</h4>
+          <p>Clinica completa: ${preview.checklist.clinicaCompleta ? "✓" : "!"}</p>
+          <p>Fornecedor: ${preview.checklist.fornecedor === "ok" ? "✓" : "!"}</p>
+          <p>Material: ${preview.checklist.material === "ok" ? "✓" : "!"}</p>
+          <p>Pacote OPME: ${preview.checklist.opmePacote === "ok" ? "✓" : "!"}</p>
+        </div>
+        <div>
+          <h4>Proximos passos</h4>
+          ${preview.nextSteps.map((step) => `<p>• ${step}</p>`).join("")}
+        </div>
+      </div>
+      ${preview.pendencias?.length ? `<div class="info-band"><strong>Pendencias:</strong>${preview.pendencias.map((p) => `<p>• ${p}</p>`).join("")}</div>` : ""}
+      <h4>Lastro tecnico</h4>
+      <div class="row">${refs || "<span class='pill'>Sem referencias cadastradas</span>"}</div>
+    </div>
+  `;
+}
+
+function kitRowsFromPacote(pacote) {
+  if (!pacote) {
+    return [];
+  }
+  return (pacote.itens || []).map((entry) => ({ itemId: entry.itemId, qtd: entry.qtd }));
+}
+
+function sanitizeMedicoCurrency(text) {
+  return String(text).replace(/R\$/g, "");
+}
+
+function collectNovoPedidoPayload() {
+  const protocoloId = document.querySelector("#patologiaSelect")?.value || "";
+  const protocolo = state.bootstrap.protocolos.find((p) => p.id === protocoloId);
+  const perguntasImportantes = (protocolo?.perguntasImportantes || []).map((q, idx) => ({
+    q,
+    r: document.querySelector(`#protoQ-${idx}`)?.value || ""
+  }));
+
+  const payload = {
+    medico: {
+      crm: document.querySelector("#crmInput")?.value || "",
+      uf: document.querySelector("#ufInput")?.value || "",
+      nome: document.querySelector("#medicoNomeInput")?.value || ""
+    },
+    pacientePseudonimizado: document.querySelector("#pacienteInput")?.value || "",
+    operadora: document.querySelector("#operadoraSelect")?.value || "",
+    carteirinha: document.querySelector("#carteirinhaInput")?.value || "",
+    hospital: document.querySelector("#hospitalSelect")?.value || "",
+    carater: document.querySelector("input[name='carater']:checked")?.value || "Eletiva",
+    preenchidoPorPS: document.querySelector("#preenchidoPSInput")?.value || "",
+    temMedicoAssistente: document.querySelector("#temAssistenteSelect")?.value || "",
+    relato: document.querySelector("#relatoInput")?.value || "",
+    cid: document.querySelector("#cidInput")?.value || "",
+    protocoloId,
+    perguntasImportantes,
+    procedimento: document.querySelector("#procedimentoSelect")?.value || "",
+    niveis: Number(document.querySelector("#niveisInput")?.value || 1),
+    codigosTuss: Array.from(document.querySelectorAll("input[name='tussPick']:checked")).map((el) => el.value),
+    itensOPME: Array.from(document.querySelectorAll(".opme-row")).map((row) => ({
+      itemId: row.querySelector("select")?.value,
+      qtd: Number(row.querySelector("input")?.value || 1)
+    })),
+    dossieFlags: {
+      imagemCompatavel: document.querySelector("#dossieImagem")?.checked || false,
+      escalaFuncional: document.querySelector("#dossieEscala")?.checked || false,
+      falhaConservador: document.querySelector("#dossieConservador")?.checked || false,
+      correlacaoClinicaImagem: document.querySelector("#dossieCorrelacao")?.checked || false
+    },
+    urgenciaFlags: {
+      deficitProgressivo: document.querySelector("#urgDeficit")?.checked || false,
+      caudaEquinaOuCompressao: document.querySelector("#urgCauda")?.checked || false,
+      fraturaInstavel: document.querySelector("#urgFratura")?.checked || false,
+      infeccaoOuTumor: document.querySelector("#urgInfeccao")?.checked || false
+    }
+  };
+
+  return payload;
+}
+
+function bindNovoPedidoEvents() {
+  const operadoraSelect = document.querySelector("#operadoraSelect");
+  const hospitalSelect = document.querySelector("#hospitalSelect");
+  const faturamentoInfo = document.querySelector("#faturamentoInfo");
+  const patologiaSelect = document.querySelector("#patologiaSelect");
+  const perguntasWrap = document.querySelector("#perguntasProtocolo");
+  const procedimentoSelect = document.querySelector("#procedimentoSelect");
+  const niveisInput = document.querySelector("#niveisInput");
+  const tussWrap = document.querySelector("#tussWrap");
+  const opmeWrap = document.querySelector("#opmeWrap");
+  const opmeStatus = document.querySelector("#opmeStatus");
+  const addOpmeBtn = document.querySelector("#addOpmeRowBtn");
+  const previewBtn = document.querySelector("#previewFarolBtn");
+  const submitBtn = document.querySelector("#submitPedidoBtn");
+  const farolWrap = document.querySelector("#farolPreview");
+  const importBtn = document.querySelector("#importRelatoBtn");
+  const fileInput = document.querySelector("#relatoFileInput");
+  const analyzeBtn = document.querySelector("#analisarRelatoBtn");
+
+  const medicoProfile = getMedicoProfile();
+  if (medicoProfile.crm) document.querySelector("#crmInput").value = medicoProfile.crm;
+  if (medicoProfile.uf) document.querySelector("#ufInput").value = medicoProfile.uf;
+  if (medicoProfile.nome) document.querySelector("#medicoNomeInput").value = medicoProfile.nome;
+
+  ["#crmInput", "#ufInput", "#medicoNomeInput"].forEach((selector) => {
+    document.querySelector(selector)?.addEventListener("input", () => {
+      setMedicoProfile({
+        crm: document.querySelector("#crmInput").value,
+        uf: document.querySelector("#ufInput").value,
+        nome: document.querySelector("#medicoNomeInput").value
       });
-      if (!response.ok) {
-        return null;
-      }
+    });
+  });
 
-      return await response.text();
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
-
-  for (const attempt of attempts) {
-    try {
-      const text = await fetchTextWithTimeout(attempt.url);
-      if (!text) {
-        continue;
-      }
-
-      const profile = parseDoctorProfileFromCfmText(text, crm, uf);
-      if (profile) {
-        return { ...profile, source: attempt.source };
-      }
-    } catch {
-      // Ignora tentativa e segue para a proxima rota.
-    }
-  }
-
-  return null;
-}
-
-
-function findDoctorProfileFromHistory(crm, uf) {
-  let sourceHistory = requestHistory;
-  if (!Array.isArray(sourceHistory) || !sourceHistory.length) {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_REQUEST_HISTORY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      sourceHistory = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      sourceHistory = [];
-    }
-  }
-
-  const matches = sourceHistory.filter(
-    (entry) => onlyDigits(entry.doctor?.crm || "") === crm && (entry.doctor?.uf || "").trim().toUpperCase() === uf
-  );
-  if (!matches.length) {
-    return null;
-  }
-
-  const firstNonEmpty = (values, fallback) => values.find((value) => String(value || "").trim()) || fallback;
-  const names = matches.map((entry) => (entry.doctor?.name || "").trim());
-  const specialties = matches.map((entry) => (entry.doctor?.specialty || "").trim());
-  const statuses = matches.map((entry) => (entry.doctor?.status || "").trim());
-
-  return {
-    name: firstNonEmpty(names, `CRM ${crm}/${uf}`),
-    specialty: firstNonEmpty(specialties, "Não informado"),
-    status: firstNonEmpty(statuses, "Ativo"),
-    source: "historico-local"
-  };
-}
-function bindDoctorRegistry() {
-  const updateFeedback = (message, isError = false) => {
-    if (!cfmLookupFeedback) {
+  operadoraSelect.addEventListener("change", () => {
+    const op = state.bootstrap.operadoras.find((item) => item.nome === operadoraSelect.value);
+    hospitalSelect.innerHTML = `<option value="">Selecione</option>${(op?.hospitais || []).map((h) => `<option value="${h}">${h}</option>`).join("")}`;
+    if (!op) {
+      faturamentoInfo.textContent = "";
       return;
     }
-    cfmLookupFeedback.textContent = message;
-    cfmLookupFeedback.classList.toggle("error", isError);
+    faturamentoInfo.textContent =
+      op.faturamentoOPME === "operadora"
+        ? "Faturamento do OPME: direto a operadora - fornecedor parceiro e range de autorizacao instantanea se aplicam."
+        : "Faturamento do OPME: via hospital - verde clinico + validacao de cotacao para o OPME.";
+  });
+
+  patologiaSelect.addEventListener("change", () => {
+    const proto = state.bootstrap.protocolos.find((p) => p.id === patologiaSelect.value);
+    perguntasWrap.innerHTML = (proto?.perguntasImportantes || [])
+      .map((q, idx) => `<label>${q}<input id="protoQ-${idx}" type="text" required /></label>`)
+      .join("");
+  });
+
+  const refreshProcedureBundles = () => {
+    const procedimento = procedimentoSelect.value;
+    const niveis = Number(niveisInput.value || 1);
+    const pacote = state.bootstrap.pacotesOpme.find((p) => p.procedimento === procedimento && Number(p.niveis) === niveis);
+    const tuss = state.bootstrap.codigoTuss.filter(
+      (item) => item.procedimentoVinculado === "Todos" || item.procedimentoVinculado.includes(procedimento) || procedimento.includes(item.procedimentoVinculado)
+    );
+    tussWrap.innerHTML = tuss
+      .map(
+        (item) =>
+          `<label class="pill ${item.tipo.includes("Principal") ? "pill-primary" : ""}"><input name="tussPick" type="checkbox" value="${item.codigo}" /> ${item.tipo.includes("Principal") ? "★ " : ""}${item.codigo}</label>`
+      )
+      .join("");
+
+    state.medicoDraft.itensOPME = kitRowsFromPacote(pacote);
+    renderOpmeRows();
   };
 
-  const applyDoctorProfile = (profile) => {
-    if (profile.name && doctorNameInput) {
-      doctorNameInput.value = profile.name;
-    }
-    if (doctorSpecialtyInput) {
-      doctorSpecialtyInput.value = profile.specialty || "N�o informado";
-    }
-    if (doctorStatusInput) {
-      doctorStatusInput.value = profile.status || "N�o informado";
-    }
-  };
+  function renderOpmeRows() {
+    const itemOptions = state.bootstrap.opmeItens
+      .map((item) => {
+        const suffix = item.blacklist ? " · em revisao tecnica" : item.parceira ? "" : " · nao parceira";
+        return `<option value="${item.id}">${item.nome} - ${item.empresa}${suffix}</option>`;
+      })
+      .join("");
 
-  checkCfmBtn?.addEventListener("click", async () => {
-    const crm = onlyDigits(doctorCrmInput?.value || "");
-    const uf = (doctorUfSelect?.value || "").trim().toUpperCase();
-    if (!crm || !uf) {
-      updateFeedback("Informe CRM e UF para consultar o CFM.", true);
+    opmeWrap.innerHTML = state.medicoDraft.itensOPME
+      .map(
+        (row, idx) => `
+      <div class="row opme-row">
+        <select>${itemOptions}</select>
+        <input type="number" min="1" value="${row.qtd}" />
+        <button class="btn btn-ghost" type="button" data-remove="${idx}">Remover</button>
+      </div>
+    `
+      )
+      .join("");
+
+    Array.from(opmeWrap.querySelectorAll(".opme-row")).forEach((row, idx) => {
+      const pick = row.querySelector("select");
+      pick.value = state.medicoDraft.itensOPME[idx].itemId;
+      pick.addEventListener("change", () => {
+        state.medicoDraft.itensOPME[idx].itemId = pick.value;
+        renderOpmeStatus();
+      });
+      row.querySelector("input").addEventListener("input", (ev) => {
+        state.medicoDraft.itensOPME[idx].qtd = Number(ev.target.value || 1);
+      });
+      row.querySelector("[data-remove]").addEventListener("click", () => {
+        state.medicoDraft.itensOPME.splice(idx, 1);
+        renderOpmeRows();
+      });
+    });
+
+    renderOpmeStatus();
+  }
+
+  function renderOpmeStatus() {
+    const itens = state.medicoDraft.itensOPME
+      .map((entry) => state.bootstrap.opmeItens.find((i) => i.id === entry.itemId))
+      .filter(Boolean);
+
+    const hasBlacklist = itens.some((i) => i.blacklist);
+    const nonPartners = itens.filter((i) => !i.parceira);
+
+    const lines = ["✓ Kit padrao/parceiras"];
+    if (nonPartners.length) {
+      lines.push(`! Item de empresa nao parceira: ${nonPartners.map((i) => i.nome).join(", ")}`);
+    }
+    if (hasBlacklist) {
+      const black = itens.filter((i) => i.blacklist);
+      lines.push(`✕ Item em blacklist: ${black.map((i) => `${i.nome} (${i.blacklistMotivo})`).join(", ")}`);
+    }
+
+    opmeStatus.innerHTML = lines.map((line) => `<p>${line}</p>`).join("");
+  }
+
+  addOpmeBtn.addEventListener("click", () => {
+    const first = state.bootstrap.opmeItens.find((i) => !i.blacklist);
+    state.medicoDraft.itensOPME.push({ itemId: first?.id || "", qtd: 1 });
+    renderOpmeRows();
+  });
+
+  procedimentoSelect.addEventListener("change", refreshProcedureBundles);
+  niveisInput.addEventListener("change", refreshProcedureBundles);
+
+  document.querySelectorAll("input[name='carater']").forEach((item) => {
+    item.addEventListener("change", () => {
+      document.querySelector("#urgenciaExtra").classList.toggle("hidden", item.value !== "Urgencia");
+    });
+  });
+
+  importBtn.addEventListener("click", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      showToast("Selecione um arquivo PDF ou TXT");
       return;
     }
 
-    updateFeedback("Consultando CFM por CRM e UF...");
-    const profileFromCfm = await fetchDoctorProfileFromCfm(crm, uf);
-    const profile = profileFromCfm || findDoctorProfileFromHistory(crm, uf);
-    if (!profile) {
-      latestDoctorLookup = {
-        checked: true,
-        verified: false,
-        source: "cfm-indisponivel-com-fallback",
-        checkedAt: new Date().toISOString(),
-        message: "CFM indisponivel no momento. Dados basicos foram preenchidos para continuidade do fluxo."
+    try {
+      const text = await parseFileToText(file);
+      document.querySelector("#relatoInput").value = text;
+      showToast("Relato importado com sucesso.");
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+
+  analyzeBtn.addEventListener("click", () => {
+    const result = parseRelato();
+    document.querySelector("#dossieEscala").checked = result.detections.escala;
+    document.querySelector("#dossieImagem").checked = result.detections.imagem;
+    document.querySelector("#dossieConservador").checked = result.detections.conservador;
+    document.querySelector("#dossieCorrelacao").checked = result.detections.correlacao;
+    document.querySelector("#urgDeficit").checked = result.detections.urgencia.deficitProgressivo;
+    document.querySelector("#urgCauda").checked = result.detections.urgencia.caudaEquinaOuCompressao;
+    document.querySelector("#urgFratura").checked = result.detections.urgencia.fraturaInstavel;
+    document.querySelector("#urgInfeccao").checked = result.detections.urgencia.infeccaoOuTumor;
+    if (result.suggestedProtocolId) {
+      patologiaSelect.value = result.suggestedProtocolId;
+      patologiaSelect.dispatchEvent(new Event("change"));
+    }
+
+    showToast("Analise concluida: flags de dossie e sugestao de patologia aplicadas.");
+  });
+
+  previewBtn.addEventListener("click", async () => {
+    try {
+      const payload = collectNovoPedidoPayload();
+      const preview = await api("/api/pedidos/preview", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      state.farolPreview = preview;
+      const proto = state.bootstrap.protocolos.find((p) => p.id === payload.protocoloId);
+      farolWrap.innerHTML = sanitizeMedicoCurrency(renderFarolCard(preview, proto));
+      submitBtn.textContent = preview.farol === "g" ? "Enviar pedido autorizado ao hospital ->" : "Registrar pedido e seguir fluxo ->";
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    try {
+      const payload = collectNovoPedidoPayload();
+      const response = await api("/api/pedidos", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+
+      showToast(`Pedido ${response.pedido.seq} registrado.`);
+      document.querySelector("#pacienteInput").value = "";
+      document.querySelector("#carteirinhaInput").value = "";
+      document.querySelector("#relatoInput").value = "";
+      document.querySelector("#cidInput").value = "";
+      document.querySelector("#farolPreview").innerHTML = "";
+      state.farolPreview = null;
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+
+  refreshProcedureBundles();
+}
+
+function renderNovoPedido() {
+  const protocolos = state.bootstrap.protocolos;
+  const operadoras = state.bootstrap.operadoras;
+  const procedimentos = [...new Set(state.bootstrap.pacotesOpme.map((p) => p.procedimento))];
+
+  content.innerHTML = sanitizeMedicoCurrency(`
+    <div class="card">
+      <h3>Passo 1 · Vinculo do pedido</h3>
+      <div class="grid-4">
+        <label>CRM<input id="crmInput" type="text" placeholder="Ex.: 123456" /></label>
+        <label>UF<input id="ufInput" type="text" placeholder="SP" maxlength="2" /></label>
+        <label>Nome do medico<input id="medicoNomeInput" type="text" /></label>
+        <label>Paciente (iniciais/prontuario)<input id="pacienteInput" type="text" placeholder="Nunca nome completo" /></label>
+      </div>
+      <div class="grid-3">
+        <label>Operadora<select id="operadoraSelect"><option value="">Selecione</option>${operadoras
+          .map((op) => `<option value="${op.nome}">${op.nome}</option>`)
+          .join("")}</select></label>
+        <label>Carteirinha<input id="carteirinhaInput" type="text" /></label>
+        <label>Hospital<select id="hospitalSelect"><option value="">Selecione</option></select></label>
+      </div>
+      <p id="faturamentoInfo" class="info-band"></p>
+      <div class="row">
+        <label class="check-row"><input type="radio" name="carater" value="Eletiva" checked /> Eletiva</label>
+        <label class="check-row"><input type="radio" name="carater" value="Urgencia" /> Urgencia (PS)</label>
+      </div>
+      <div id="urgenciaExtra" class="grid-2 hidden">
+        <label>Preenchido por (medico do PS)<input id="preenchidoPSInput" type="text" /></label>
+        <label>Paciente tem medico assistente?
+          <select id="temAssistenteSelect"><option value="">Selecione</option><option>Sim</option><option>Nao</option></select>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Passo 2 · Dossie minimo</h3>
+      <div class="row">
+        <input id="relatoFileInput" type="file" accept=".pdf,.txt" />
+        <button id="importRelatoBtn" class="btn btn-ghost" type="button">Importar anamnese/evolucao (PDF ou TXT)</button>
+        <button id="analisarRelatoBtn" class="btn btn-ghost" type="button">Analisar texto e pre-preencher</button>
+      </div>
+      <div class="grid-2">
+        <label>Relato estruturado<textarea id="relatoInput" rows="8"></textarea></label>
+        <div>
+          <label>CID-10<input id="cidInput" type="text" /></label>
+          <label>Patologia principal<select id="patologiaSelect"><option value="">Selecione</option>${protocolos
+            .map((p) => `<option value="${p.id}">${p.nome}</option>`)
+            .join("")}</select></label>
+          <div class="card" id="perguntasProtocolo"></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <label class="check-row"><input id="dossieImagem" type="checkbox" /> Imagem compativel</label>
+        <label class="check-row"><input id="dossieEscala" type="checkbox" /> Escala funcional documentada</label>
+        <label class="check-row"><input id="dossieConservador" type="checkbox" /> Falha do conservador</label>
+        <label class="check-row"><input id="dossieCorrelacao" type="checkbox" /> Correlacao clinica x imagem</label>
+      </div>
+      <div class="urgency-box">
+        <p><strong>Criterios de urgencia</strong></p>
+        <label class="check-row"><input id="urgDeficit" type="checkbox" /> Deficit progressivo</label>
+        <label class="check-row"><input id="urgCauda" type="checkbox" /> Cauda equina / compressao medular</label>
+        <label class="check-row"><input id="urgFratura" type="checkbox" /> Fratura instavel</label>
+        <label class="check-row"><input id="urgInfeccao" type="checkbox" /> Infeccao / tumor com compressao</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Passo 3 · Procedimento, codigos e OPME</h3>
+      <div class="grid-2">
+        <label>Procedimento<select id="procedimentoSelect"><option value="">Selecione</option>${procedimentos
+          .map((p) => `<option value="${p}">${p}</option>`)
+          .join("")}</select></label>
+        <label>Niveis<input id="niveisInput" type="number" min="1" max="4" value="1" /></label>
+      </div>
+      <h4>TUSS sugeridos</h4>
+      <div id="tussWrap" class="row"></div>
+      <h4>Kit padrao OPME</h4>
+      <div id="opmeWrap" class="stack-gap"></div>
+      <button id="addOpmeRowBtn" class="btn btn-ghost" type="button">+ adicionar item</button>
+      <div id="opmeStatus" class="info-band"></div>
+    </div>
+
+    <div class="card">
+      <h3>Passo 4 · Farol</h3>
+      <div class="row">
+        <button id="previewFarolBtn" class="btn" type="button">Atualizar semaforo</button>
+        <button id="submitPedidoBtn" class="btn btn-ghost" type="button">Registrar pedido e seguir fluxo -></button>
+      </div>
+      <div id="farolPreview"></div>
+    </div>
+  `);
+
+  bindNovoPedidoEvents();
+}
+
+async function renderMeusPedidos() {
+  const data = await api("/api/pedidos");
+  state.pedidos = data.pedidos || [];
+  content.innerHTML = sanitizeMedicoCurrency(`
+    <div class="card">
+      <div class="row">
+        <button id="exportPedidosBtn" class="btn btn-ghost" type="button">Exportar JSON</button>
+        <button id="clearPedidosBtn" class="btn btn-ghost" type="button">Limpar testes</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Paciente</th><th>Procedimento</th><th>Carater</th><th>Farol</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${state.pedidos
+              .map(
+                (item) =>
+                  `<tr><td>${item.seq}</td><td>${item.pacientePseudonimizado}</td><td>${item.procedimento}</td><td>${item.carater}</td><td>${item.farol.toUpperCase()}</td><td>${item.status}</td></tr>`
+              )
+              .join("") || "<tr><td colspan='6'>Sem pedidos.</td></tr>"}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `);
+
+  document.querySelector("#exportPedidosBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state.pedidos, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "meus-pedidos.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.querySelector("#clearPedidosBtn").addEventListener("click", async () => {
+    await api("/api/pedidos/mine", { method: "DELETE" });
+    showToast("Pedidos de teste removidos.");
+    renderMeusPedidos();
+  });
+}
+
+async function renderMeuDesempenho() {
+  const data = await api("/api/pedidos");
+  const casos = data.pedidos.length;
+  const abaixoMinimo = casos < 20;
+  const percentilClinico = Math.min(95, 45 + casos);
+  const percentilAdesao = Math.min(98, 40 + casos);
+
+  content.innerHTML = sanitizeMedicoCurrency(`
+    <div class="card">
+      <p class="info-band">Percentis a partir de 20 casos - voce tem ${casos}. ${abaixoMinimo ? "Barras ilustrativas." : "Calculo ativo."}</p>
+      <div class="kpi-wrap">
+        <div class="kpi"><small>Percentil clinico</small><strong>${percentilClinico}</strong></div>
+        <div class="kpi"><small>Percentil adesao de protocolo</small><strong>${percentilAdesao}</strong></div>
+      </div>
+      <p class="muted">Sua posicao nao muda por pagar a assinatura. Ninguem ve seu nome.</p>
+    </div>
+  `);
+}
+
+function renderProtocolosDuvidas() {
+  content.innerHTML = sanitizeMedicoCurrency(`
+    <div class="card">
+      ${state.bootstrap.protocolos
+        .map(
+          (p) => `
+        <article class="card">
+          <h3>${p.nome}</h3>
+          <p><strong>Autorizar quando:</strong> ${p.autorizarQuando.join(" | ")}</p>
+          <p><strong>Ponto de controle:</strong> ${p.pontoDeControle}</p>
+          <p><strong>Perguntas importantes:</strong> ${p.perguntasImportantes.join(" | ")}</p>
+          <div class="row">${p.referencias
+            .map((r) => `<a class="pill" href="${r.link || "#"}" target="_blank" rel="noreferrer">${r.titulo}</a>`)
+            .join("")}</div>
+        </article>
+      `
+        )
+        .join("")}
+    </div>
+  `);
+}
+
+async function renderOperadoraVisaoGeral() {
+  const [kpis, pedidosResp] = await Promise.all([api("/api/operadora/kpis"), api("/api/pedidos")]);
+  content.innerHTML = `
+    <div class="card">
+      <div class="kpi-wrap">
+        <div class="kpi"><small>Total de pedidos</small><strong>${kpis.total}</strong></div>
+        <div class="kpi"><small>% verde</small><strong>${kpis.percentualVerde.toFixed(1)}%</strong></div>
+        <div class="kpi"><small>Custo medio OPME</small><strong>${brCurrency(kpis.custoMedio)}</strong></div>
+        <div class="kpi"><small>Fora do padrao</small><strong>${kpis.foraPadrao}</strong></div>
+      </div>
+      <p class="info-band">Regra de comunicacao: papel medico nunca visualiza valores de OPME.</p>
+      <p class="muted">Pedidos monitorados: ${pedidosResp.pedidos.length}</p>
+    </div>
+  `;
+}
+
+async function renderOperadoraFila() {
+  const data = await api("/api/pedidos");
+  content.innerHTML = `
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Paciente</th><th>Farol</th><th>Racional</th><th>Custo OPME</th></tr></thead>
+        <tbody>
+          ${data.pedidos
+            .map((p) => `<tr><td>${p.seq}</td><td>${p.pacientePseudonimizado}</td><td>${p.farol.toUpperCase()}</td><td>${p.racional}</td><td>${brCurrency(p.custoTotalCalculado)}</td></tr>`)
+            .join("") || "<tr><td colspan='5'>Sem pedidos.</td></tr>"}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderOperadoraRegrasRange() {
+  content.innerHTML = `
+    <div class="card">
+      <h3>Tetos por pacote (range verde)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Procedimento</th><th>Niveis</th><th>Teto</th></tr></thead>
+          <tbody>
+            ${state.bootstrap.pacotesOpme
+              .map((p) => `<tr><td>${p.procedimento}</td><td>${p.niveis}</td><td>${brCurrency(p.teto)}</td></tr>`)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      <article class="card">
+        <p>Empresa nao parceira -> amarelo (validacao de fornecedor).</p>
+        <p>Item em blacklist -> revisao de material com alternativa.</p>
+        <p>Acima do teto -> amarelo (OPME em validacao).</p>
+        <p>Dossie incompleto -> amarelo (completar dossie).</p>
+        <p>Urgencia com criterio -> cuidado liberado + revisao retrospectiva.</p>
+        <p>Urgencia sem criterio -> internar e reclassificar 24-72h.</p>
+      </article>
+    </div>
+  `;
+}
+
+async function renderHospitalFila() {
+  const data = await api("/api/pedidos");
+  const pedidos = data.pedidos;
+  const autorizados = pedidos.filter((p) => p.farol === "g").length;
+  const exigemAcao = pedidos.filter((p) => p.farol === "a").length;
+  const urgencias = pedidos.filter((p) => p.carater === "Urgencia").length;
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="kpi-wrap">
+        <div class="kpi"><small>Chegaram autorizados</small><strong>${autorizados}</strong></div>
+        <div class="kpi"><small>Exigem acao</small><strong>${exigemAcao}</strong></div>
+        <div class="kpi"><small>Urgencias</small><strong>${urgencias}</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Paciente</th><th>Farol</th><th>Acao hospital</th></tr></thead>
+          <tbody>
+            ${pedidos
+              .map((p) => {
+                const acao = p.farol === "g" ? "Agendar" : p.farol === "a" ? "Validar OPME" : "c/ operadora";
+                return `<tr><td>${p.seq}</td><td>${p.pacientePseudonimizado}</td><td>${p.farol.toUpperCase()}</td><td>${acao}</td></tr>`;
+              })
+              .join("") || "<tr><td colspan='4'>Sem pedidos.</td></tr>"}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function renderHospitalUrgencias() {
+  const data = await api("/api/hospital/urgencias");
+  content.innerHTML = `
+    <div class="card">
+      <p class="info-band">Toda urgencia entra em revisao retrospectiva; padrao por medico e monitorado.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Criterio clinico</th><th>Medico assistente</th><th>Conduta</th></tr></thead>
+          <tbody>
+            ${data.urgencias
+              .map((u) => {
+                const conduta = u.urgenciaCriterioPresente
+                  ? "cuidado liberado · OPME a parte"
+                  : "internar p/ analgesia -> reclassificar";
+                return `<tr><td>${u.seq}</td><td>${u.urgenciaCriterioPresente ? "Presente" : "Ausente"}</td><td>${u.temMedicoAssistente || "N/I"}</td><td>${conduta}</td></tr>`;
+              })
+              .join("") || "<tr><td colspan='4'>Sem urgencias.</td></tr>"}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function renderAdminScreen(mode) {
+  const data = await api("/api/admin/all");
+
+  if (mode === "admin-protocolos") {
+    content.innerHTML = `
+      <div class="card">
+        <h3>Novo protocolo</h3>
+        <div class="grid-2">
+          <label>Nome<input id="admProtoNome" type="text" /></label>
+          <label>Regiao<input id="admProtoRegiao" type="text" /></label>
+        </div>
+        <label>Autorizar quando (uma linha por criterio)<textarea id="admProtoAutorizar" rows="4"></textarea></label>
+        <label>Ponto de controle<textarea id="admProtoControle" rows="2"></textarea></label>
+        <label>Perguntas importantes (uma linha por pergunta)<textarea id="admProtoPerguntas" rows="4"></textarea></label>
+        <label>Referencias (titulo | link por linha)<textarea id="admProtoRefs" rows="4"></textarea></label>
+        <button id="admProtoSave" class="btn" type="button">Salvar protocolo</button>
+      </div>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Regiao</th><th>Acoes</th></tr></thead>
+          <tbody>
+            ${data.protocolos
+              .map((p) => `<tr><td>${p.nome}</td><td>${p.regiao}</td><td><button class="btn btn-ghost" data-del-proto="${p.id}" type="button">Excluir</button></td></tr>`)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    document.querySelector("#admProtoSave").addEventListener("click", async () => {
+      const payload = {
+        nome: document.querySelector("#admProtoNome").value,
+        regiao: document.querySelector("#admProtoRegiao").value,
+        autorizarQuando: document
+          .querySelector("#admProtoAutorizar")
+          .value.split("\n")
+          .map((v) => v.trim())
+          .filter(Boolean),
+        pontoDeControle: document.querySelector("#admProtoControle").value,
+        perguntasImportantes: document
+          .querySelector("#admProtoPerguntas")
+          .value.split("\n")
+          .map((v) => v.trim())
+          .filter(Boolean),
+        referencias: document
+          .querySelector("#admProtoRefs")
+          .value.split("\n")
+          .map((line) => line.split("|").map((v) => v.trim()))
+          .filter((parts) => parts[0])
+          .map((parts) => ({ titulo: parts[0], link: parts[1] || "" }))
       };
-      if (doctorNameInput && !doctorNameInput.value.trim()) {
-        doctorNameInput.value = `CRM ${crm}/${uf}`;
-      }
-      if (doctorSpecialtyInput) {
-        doctorSpecialtyInput.value = "Não informado";
-      }
-      if (doctorStatusInput) {
-        doctorStatusInput.value = "Verificacao pendente";
-      }
-      updateFeedback(latestDoctorLookup.message, false);
-      return;
-    }
+      await api("/api/admin/protocolos", { method: "POST", body: JSON.stringify(payload) });
+      showToast("Protocolo salvo.");
+      renderAdminScreen(mode);
+    });
 
-    applyDoctorProfile(profile);
-    latestDoctorLookup = {
-      checked: true,
-      verified: true,
-      source: profile.source,
-      checkedAt: new Date().toISOString(),
-      message:
-        profile.source === "historico-local"
-          ? "Dados preenchidos pelo historico local de pedidos/documentos."
-          : "Dados do médico preenchidos automaticamente a partir da busca no CFM."
-    };
-    updateFeedback(latestDoctorLookup.message, false);
-  });
+    document.querySelectorAll("[data-del-proto]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await api(`/api/admin/protocolos/${btn.dataset.delProto}`, { method: "DELETE" });
+        renderAdminScreen(mode);
+      });
+    });
 
-  doctorCrmInput?.addEventListener("input", () => {
-    latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
-  });
-
-  doctorUfSelect?.addEventListener("change", () => {
-    latestDoctorLookup = { checked: false, verified: false, source: "nao-consultado", message: "" };
-  });
-}
-
-function extractDoctorFromUploadText(text) {
-  const content = String(text || "");
-  const crmMatch = content.match(/CRM\s*[:\-]?\s*(\d{4,8})\s*\/?\s*([A-Z]{2})?/i);
-  const doctorLineMatch = content.match(/MEDICO\s+SOLICITANTE\s*:\s*([^\n\r|]+)/i);
-  const specialtyMatch = content.match(/ESPECIALIDADE\s*:\s*([^\n\r]+)/i);
-
-  return {
-    crm: crmMatch?.[1] ? onlyDigits(crmMatch[1]) : "",
-    uf: crmMatch?.[2] ? crmMatch[2].toUpperCase() : "",
-    name: doctorLineMatch?.[1] ? doctorLineMatch[1].trim() : "",
-    specialty: specialtyMatch?.[1] ? specialtyMatch[1].trim() : ""
-  };
-}
-
-function hydrateDoctorFromUploadText(text) {
-  const extracted = extractDoctorFromUploadText(text);
-  if (!extracted.crm && !extracted.name) {
     return;
   }
 
-  if (extracted.crm && doctorCrmInput) {
-    doctorCrmInput.value = extracted.crm;
+  if (mode === "admin-opme") {
+    content.innerHTML = `
+      <div class="card">
+        <h3>Novo item OPME</h3>
+        <div class="grid-3">
+          <label>Nome<input id="admOpmeNome" type="text" /></label>
+          <label>Codigo interno<input id="admOpmeCodigo" type="text" /></label>
+          <label>Tipo<input id="admOpmeTipo" type="text" /></label>
+          <label>Empresa<input id="admOpmeEmpresa" type="text" /></label>
+          <label>Custo backoffice<input id="admOpmeCusto" type="number" min="0" /></label>
+          <label>Parceira<select id="admOpmeParceira"><option value="true">Sim</option><option value="false">Nao</option></select></label>
+          <label>Blacklist<select id="admOpmeBlacklist"><option value="false">Nao</option><option value="true">Sim</option></select></label>
+          <label>Motivo blacklist<input id="admOpmeMotivo" type="text" /></label>
+        </div>
+        <button id="admOpmeSave" class="btn" type="button">Salvar item</button>
+      </div>
+      <div class="card">
+        <h3>Pacote OPME (upsert por procedimento + niveis)</h3>
+        <div class="grid-3">
+          <label>Procedimento<input id="admPacProc" type="text" /></label>
+          <label>Niveis<input id="admPacNiveis" type="number" min="1" value="1" /></label>
+          <label>Teto<input id="admPacTeto" type="number" min="0" /></label>
+        </div>
+        <label>Itens do pacote (itemId:qtd por linha)<textarea id="admPacItens" rows="4"></textarea></label>
+        <button id="admPacSave" class="btn" type="button">Salvar pacote</button>
+      </div>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Empresa</th><th>Parceira</th><th>Blacklist</th><th>Custo</th><th>Acoes</th></tr></thead>
+          <tbody>
+            ${data.opmeItens
+              .map(
+                (item) =>
+                  `<tr><td>${item.nome}</td><td>${item.empresa}</td><td>${item.parceira ? "Sim" : "Nao"}</td><td>${item.blacklist ? "Sim" : "Nao"}</td><td>${brCurrency(item.custoUnitario)}</td><td><button class="btn btn-ghost" data-del-opme="${item.id}" type="button">Excluir</button></td></tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    document.querySelector("#admOpmeSave").addEventListener("click", async () => {
+      const payload = {
+        nome: document.querySelector("#admOpmeNome").value,
+        codigoInterno: document.querySelector("#admOpmeCodigo").value,
+        tipo: document.querySelector("#admOpmeTipo").value,
+        empresa: document.querySelector("#admOpmeEmpresa").value,
+        custoUnitario: Number(document.querySelector("#admOpmeCusto").value || 0),
+        parceira: document.querySelector("#admOpmeParceira").value === "true",
+        blacklist: document.querySelector("#admOpmeBlacklist").value === "true",
+        blacklistMotivo: document.querySelector("#admOpmeMotivo").value
+      };
+      await api("/api/admin/opme-itens", { method: "POST", body: JSON.stringify(payload) });
+      showToast("Item OPME salvo.");
+      renderAdminScreen(mode);
+    });
+
+    document.querySelector("#admPacSave").addEventListener("click", async () => {
+      const itens = document
+        .querySelector("#admPacItens")
+        .value.split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [itemId, qtd] = line.split(":");
+          return { itemId: itemId.trim(), qtd: Number(qtd || 1) };
+        });
+
+      const payload = {
+        procedimento: document.querySelector("#admPacProc").value,
+        niveis: Number(document.querySelector("#admPacNiveis").value || 1),
+        teto: Number(document.querySelector("#admPacTeto").value || 0),
+        itens
+      };
+
+      await api("/api/admin/pacotes-opme", { method: "POST", body: JSON.stringify(payload) });
+      showToast("Pacote salvo e versionado.");
+      renderAdminScreen(mode);
+    });
+
+    document.querySelectorAll("[data-del-opme]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await api(`/api/admin/opme-itens/${btn.dataset.delOpme}`, { method: "DELETE" });
+        renderAdminScreen(mode);
+      });
+    });
+
+    return;
   }
 
-  if (extracted.uf && doctorUfSelect) {
-    doctorUfSelect.value = extracted.uf;
-  }
+  content.innerHTML = `
+    <div class="card">
+      <h3>Novo codigo TUSS</h3>
+      <div class="grid-3">
+        <label>Codigo<input id="admTussCod" type="text" /></label>
+        <label>Descricao<input id="admTussDesc" type="text" /></label>
+        <label>Procedimento vinculado<input id="admTussProc" type="text" placeholder="Todos ou nome" /></label>
+        <label>Tipo<input id="admTussTipo" type="text" /></label>
+        <label>Obs<input id="admTussObs" type="text" /></label>
+      </div>
+      <button id="admTussSave" class="btn" type="button">Salvar codigo</button>
+    </div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>Codigo</th><th>Descricao</th><th>Vinculo</th><th>Tipo</th><th>Acoes</th></tr></thead>
+        <tbody>
+          ${data.codigoTuss
+            .map(
+              (t) =>
+                `<tr><td>${t.codigo}</td><td>${t.descricao}</td><td>${t.procedimentoVinculado}</td><td>${t.tipo}</td><td><button class="btn btn-ghost" data-del-tuss="${t.codigo}" type="button">Excluir</button></td></tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 
-  if (extracted.name && doctorNameInput) {
-    doctorNameInput.value = extracted.name;
-  }
-
-  if (extracted.specialty && doctorSpecialtyInput) {
-    doctorSpecialtyInput.value = extracted.specialty;
-  }
-
-  if (doctorStatusInput && !doctorStatusInput.value.trim()) {
-    doctorStatusInput.value = "Ativo";
-  }
-}
-
-function registerUploadRequest(report, text) {
-  hydrateDoctorFromUploadText(text);
-
-  const context = getRequestContext();
-  if (!context.doctor.crm || !context.doctor.uf) {
-    uploadResult.innerHTML =
-      "<p>Não foi possível ranquear: informe CRM e UF do médico (ou inclua no texto do pedido).</p>";
-    return false;
-  }
-
-  if (!context.doctor.name) {
-    context.doctor.name = `CRM ${context.doctor.crm}/${context.doctor.uf}`;
-    if (doctorNameInput) {
-      doctorNameInput.value = context.doctor.name;
-    }
-  }
-
-  if (!context.patient.name) {
-    context.patient.name = "Paciente não informado";
-  }
-
-  if (!context.patient.document) {
-    context.patient.document = `SEM-DOC-${Date.now()}`;
-  }
-
-  if (!context.surgeryDate) {
-    context.surgeryDate = new Date().toISOString().slice(0, 10);
-    if (surgeryDateInput) {
-      surgeryDateInput.value = context.surgeryDate;
-    }
-  }
-
-  const protocol = detectProtocolByText(text);
-  const expectedTussCodes = protocol ? protocol.tuss.map((item) => item.codigo) : [...ALL_VALID_TUSS].slice(0, 4);
-
-  const payload = {
-    id: buildRequestId(),
-    createdAt: new Date().toISOString(),
-    documentSource: "auditado",
-    doctor: context.doctor,
-    patient: context.patient,
-    surgeryDate: context.surgeryDate,
-    protocolLabel: report.protocolLabel,
-    tussCodes: report.tussFound,
-    expectedTussCodes,
-    opmeItems: report.checks.find((item) => item.label === "OPME por item")?.ok ? ["OPME informado"] : [],
-    expectedOpmeCount: 1,
-    outcomes: {
-      negativeCodes: [],
-      reoperationUnder90: false,
-      reoperationDate: ""
-    }
-  };
-  registerRequestEntry(payload);
-  return true;
-}
-
-function registerQuestionnaireRequest(result) {
-  const expectedTussCodes = result.protocol.tuss.map((item) => item.codigo);
-  const payload = {
-    id: buildRequestId(),
-    createdAt: new Date().toISOString(),
-    documentSource: "criado",
-    doctor: result.requestContext.doctor,
-    patient: result.requestContext.patient,
-    surgeryDate: result.requestContext.surgeryDate,
-    protocolLabel: result.protocol.label,
-    tussCodes: result.tuss.map((item) => item.code),
-    expectedTussCodes,
-    opmeItems: result.opme,
-    expectedOpmeCount: result.opme.length,
-    outcomes: {
-      negativeCodes: [],
-      reoperationUnder90: false,
-      reoperationDate: ""
-    }
-  };
-  registerRequestEntry(payload);
-}
-
-function bindRankingWindow() {
-  outcomeForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const requestId = outcomeRequestSelect?.value || "";
-    const entry = requestHistory.find((item) => item.id === requestId);
-    if (!entry) {
-      outcomeFeedback.textContent = "Selecione um pedido válido para registrar o desfecho.";
-      outcomeFeedback.classList.add("error");
-      return;
-    }
-
-    const selectedCodes = [];
-    if (negTuss30715270?.checked) selectedCodes.push("30715270");
-    if (negTuss30715210?.checked) selectedCodes.push("30715210");
-    if (negTuss30715199?.checked) selectedCodes.push("30715199");
-    if (negTuss30715261?.checked) selectedCodes.push("30715261");
-    if (negTuss31401260?.checked) selectedCodes.push("31401260");
-
-    const reoperationDate = toIsoDate(reoperationDateInput?.value || "");
-    const interval = reoperationDate ? daysBetween(entry.surgeryDate, reoperationDate) : null;
-    const reoperationUnder90 = interval !== null && interval > 10;
-
-    entry.outcomes = {
-      negativeCodes: selectedCodes,
-      reoperationDate,
-      reoperationUnder90
+  document.querySelector("#admTussSave").addEventListener("click", async () => {
+    const payload = {
+      codigo: document.querySelector("#admTussCod").value,
+      descricao: document.querySelector("#admTussDesc").value,
+      procedimentoVinculado: document.querySelector("#admTussProc").value || "Todos",
+      tipo: document.querySelector("#admTussTipo").value,
+      obs: document.querySelector("#admTussObs").value
     };
 
-    persistRequestHistory();
-    renderDoctorRanking();
+    await api("/api/admin/tuss", { method: "POST", body: JSON.stringify(payload) });
+    showToast("Codigo TUSS salvo.");
+    renderAdminScreen(mode);
+  });
 
-    outcomeFeedback.textContent = reoperationUnder90
-      ? "Desfecho salvo com alerta de reoperação em intervalo superior a 10 dias."
-      : "Desfecho salvo no ranking médico.";
-    outcomeFeedback.classList.remove("error");
+  document.querySelectorAll("[data-del-tuss]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await api(`/api/admin/tuss/${btn.dataset.delTuss}`, { method: "DELETE" });
+      renderAdminScreen(mode);
+    });
   });
 }
 
-async function extractTextFromFile(file) {
-  if (!file) {
-    return "";
-  }
-
-  const lowerName = file.name.toLowerCase();
-  const textLike = [".txt", ".md", ".csv", ".json"];
-  if (textLike.some((ext) => lowerName.endsWith(ext))) {
-    return file.text();
-  }
-
-  const buffer = await file.arrayBuffer();
-  const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-  const latin1 = new TextDecoder("latin1", { fatal: false }).decode(buffer);
-
-  const utf8Score = (utf8.match(/[a-zA-Z0-9]/g) || []).length;
-  const latin1Score = (latin1.match(/[a-zA-Z0-9]/g) || []).length;
-  return utf8Score >= latin1Score ? utf8 : latin1;
-}
-
-function bindDecisionHub() {
-  if (modeQuestionnaireBtn && modeUploadBtn && questionnairePanel && uploadPanel) {
-    setDecisionMode("questionnaire");
-    modeQuestionnaireBtn.addEventListener("click", () => setDecisionMode("questionnaire"));
-    modeUploadBtn.addEventListener("click", () => setDecisionMode("upload"));
-  }
-
-  surgeryTypeSelect.addEventListener("change", () => {
-    const isEndoscopic = surgeryTypeSelect.value === "endoscopica";
-    levelsSelect.disabled = isEndoscopic;
-    if (isEndoscopic) {
-      levelsSelect.value = "1";
-    }
-  });
-
-  generateDecisionBtn.addEventListener("click", () => {
-    const result = validateQuestionnaireInputs();
-    if (!result) {
-      return;
-    }
-    registerQuestionnaireRequest(result);
-    renderQuestionnaireResult(result);
-  });
-
-  pedidoFileInput.addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      uploadedPedidoText = "";
-      return;
-    }
-
-    try {
-      uploadedPedidoText = await extractTextFromFile(file);
-      uploadResult.innerHTML = `<p>Arquivo carregado: <strong>${escapeHtml(file.name)}</strong>.</p>`;
-    } catch (error) {
-      uploadedPedidoText = "";
-      uploadResult.innerHTML = `<p>Falha ao ler arquivo: ${escapeHtml(error.message)}</p>`;
-    }
-  });
-
-  analyzePedidoBtn.addEventListener("click", () => {
-    const combined = `${uploadedPedidoText}\n${pedidoTextInput.value || ""}`.trim();
-    if (!combined) {
-      uploadResult.innerHTML =
-        "<p>Envie um arquivo ou cole o texto do pedido para executar a avaliacao de liberacao.</p>";
-      return;
-    }
-
-    const report = evaluatePedido(combined);
-    const registered = registerUploadRequest(report, combined);
-    if (!registered) {
-      return;
-    }
-    renderUploadResult(report);
-  });
-
-  decisionResult.addEventListener("click", async (event) => {
-    const btn = event.target.closest("#copyRequestBtn");
-    const downloadBtn = event.target.closest("#downloadRequestBtn");
-
-    if (btn) {
-      if (!latestRequestTemplate) {
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(latestRequestTemplate);
-        btn.textContent = "Copiado";
-        setTimeout(() => {
-          btn.textContent = "Copiar solicitação";
-        }, 1500);
-      } catch {
-        btn.textContent = "Falha ao copiar";
-        setTimeout(() => {
-          btn.textContent = "Copiar solicitação";
-        }, 1500);
-      }
-      return;
-    }
-
-    if (downloadBtn) {
-      if (!latestRequestTemplate) {
-        return;
-      }
-
-      const blob = new Blob([latestRequestTemplate], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = latestRequestFileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-
-      downloadBtn.textContent = "Arquivo baixado";
-      setTimeout(() => {
-        downloadBtn.textContent = "Baixar .txt";
-      }, 1500);
-    }
-  });
-}
-
-async function loadData() {
+async function renderScreen() {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY_LESIONS);
-    if (stored) {
-      lesions = JSON.parse(stored);
-      refreshAllViews();
-      return;
+    if (!state.bootstrap) {
+      state.bootstrap = await api("/api/bootstrap");
     }
 
-    const response = await fetch("./data/lesoes.json");
-    if (!response.ok) {
-      throw new Error("Falha ao carregar base de lesoes.");
+    switch (state.activeScreen) {
+      case "novo-pedido":
+        renderNovoPedido();
+        return;
+      case "meus-pedidos":
+        await renderMeusPedidos();
+        return;
+      case "meu-desempenho":
+        await renderMeuDesempenho();
+        return;
+      case "protocolos-duvidas":
+        renderProtocolosDuvidas();
+        return;
+      case "visao-geral":
+        await renderOperadoraVisaoGeral();
+        return;
+      case "fila-autorizacao":
+        await renderOperadoraFila();
+        return;
+      case "regras-range":
+        renderOperadoraRegrasRange();
+        return;
+      case "fila-pedidos":
+        await renderHospitalFila();
+        return;
+      case "urgencias":
+        await renderHospitalUrgencias();
+        return;
+      case "admin-protocolos":
+      case "admin-opme":
+      case "admin-tuss":
+        await renderAdminScreen(state.activeScreen);
+        return;
+      default:
+        content.innerHTML = "<div class='card'><p>Tela nao mapeada.</p></div>";
     }
-
-    lesions = await response.json();
-    refreshAllViews();
   } catch (error) {
-    lesions = FALLBACK_LESIONS;
-    refreshAllViews();
-
-    if (location.protocol === "file:") {
-      lesionGrid.innerHTML = `<p>Erro ao carregar dados: ${escapeHtml(
-        error.message
-      )} Em execucao local (file://), use um servidor simples para habilitar o carregamento JSON.</p>`;
-      resultCount.textContent = "0 resultado(s)";
-      materialsTableBody.innerHTML = "<tr><td colspan='4'>Dados indisponiveis.</td></tr>";
-    }
+    content.innerHTML = `<div class="card"><p>Erro ao carregar: ${error.message}</p></div>`;
   }
 }
 
-function init() {
-  bindFocusMode();
-  bindAccessProgress();
-  bindInternalTabs();
-  loadRequestHistory();
-  renderOutcomeRequestOptions();
-  renderDoctorRanking();
-  bindLoginGate();
-  bindLanding();
-  bindFilters();
-  bindAdmin();
-  bindDoctorRegistry();
-  bindDecisionHub();
-  bindRankingWindow();
-  loadData();
+async function bootstrapAuth() {
+  if (!state.token) {
+    renderLayout();
+    return;
+  }
+
+  try {
+    const me = await api("/api/auth/me");
+    state.user = me.user;
+    renderLayout();
+  } catch {
+    localStorage.removeItem(TOKEN_KEY);
+    state.token = "";
+    state.user = null;
+    renderLayout();
+  }
 }
 
-init();
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  loginFeedback.textContent = "Autenticando...";
+  try {
+    const data = await api("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: loginEmail.value.trim(), password: loginPassword.value })
+    });
+    state.token = data.token;
+    state.user = data.user;
+    state.bootstrap = null;
+    localStorage.setItem(TOKEN_KEY, state.token);
+    loginFeedback.textContent = "Acesso liberado.";
+    renderLayout();
+  } catch (error) {
+    loginFeedback.textContent = error.message;
+  }
+});
 
+logoutBtn.addEventListener("click", () => {
+  localStorage.removeItem(TOKEN_KEY);
+  state.token = "";
+  state.user = null;
+  state.bootstrap = null;
+  state.activeScreen = "";
+  renderLayout();
+});
 
-
-
-
-
-
-
-
+bootstrapAuth();

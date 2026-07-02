@@ -3,571 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simple Coluna | Triagem Educacional</title>
+    <title>Simple Coluna | Fast-track de autorizacao cirurgica</title>
     <meta
       name="description"
-      content="Plataforma educacional para apoio na discussão de possíveis lesões cirúrgicas da coluna, materiais e códigos de referência."
+      content="Plataforma de autorizacao cirurgica de coluna com farol clinico, trilha de auditoria e fluxos para medico, operadora, hospital e administracao."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.mjs" type="module"></script>
   </head>
   <body>
-    <div class="bg-shape bg-shape-left" aria-hidden="true"></div>
-    <div class="bg-shape bg-shape-right" aria-hidden="true"></div>
-    <input id="focusModeToggle" class="focus-toggle" type="checkbox" aria-label="alternar modo foco" />
+    <div class="bg-layer"></div>
 
-    <header class="topbar">
-      <div class="brand-block">
-        <p class="domain">www.simplecoluna.com</p>
-        <h1>Simple Coluna</h1>
-        <p class="subtitle">Plataforma educacional para discussão técnica de possíveis lesões cirúrgicas da coluna</p>
-      </div>
-      <div class="topbar-actions">
-        <label class="admin-btn secondary focus-toggle-btn" for="focusModeToggle">Modo foco</label>
-        <span class="focus-indicator" aria-live="polite">Foco ativo</span>
-        <a id="topAuthBtn" class="admin-btn secondary top-login-link" href="#loginGate">Login seguro</a>
-        <button id="adminToggleBtn" class="admin-btn hidden" type="button">Painel Admin</button>
-        <div class="chip">Versão 0.2</div>
-      </div>
-    </header>
-
-    <main>
-      <div id="publicArea">
-      <section class="landing-hero reveal" aria-label="apresentação da plataforma">
-        <div class="landing-copy">
-          <p class="eyebrow">Plataforma institucional</p>
-          <h2>Simple Coluna é uma camada educacional para qualificar discussões técnicas em cirurgia da coluna.</h2>
-          <p>
-            Estruturamos triagem orientada, organização de hipóteses e padronização documental em um ambiente
-            claro para times assistenciais, auditoria técnica e gestão clínica.
-          </p>
-          <p>
-            Esta área apresenta o posicionamento institucional da plataforma. Os módulos operacionais e os dados
-            internos são exibidos apenas após autenticação.
-          </p>
-
-          <div class="landing-proof">
-            <p><strong>Posicionamento:</strong> suporte educacional para decisões melhor documentadas, com foco em consistência técnica.</p>
-          </div>
-
-          <div class="landing-actions">
-            <button id="enterPlatformBtn" class="admin-btn" type="button">Acessar com login</button>
-            <a id="journeyAnchorBtn" class="admin-btn secondary" href="#landingJourney">Como funciona</a>
-          </div>
-
-          <div class="access-progress" aria-label="progresso de acesso">
-            <p id="accessProgressText" class="access-progress-text">Progresso de acesso: 1/3</p>
-            <div
-              id="accessProgressBar"
-              class="access-progress-bar"
-              role="progressbar"
-              aria-label="progresso de acesso"
-              aria-valuemin="1"
-              aria-valuemax="3"
-              aria-valuenow="1"
-            >
-              <span id="accessProgressFill" class="access-progress-fill"></span>
-            </div>
-            <ol id="accessProgressSteps" class="access-progress-steps">
-              <li data-step="1" class="active">Entender</li>
-              <li data-step="2">Validar fluxo</li>
-              <li data-step="3">Autenticar</li>
-            </ol>
-          </div>
-        </div>
-
-        <div class="landing-panel">
-          <div class="landing-stat">
-            <span>Conteúdo educacional</span>
-            <strong>Visão objetiva</strong>
-            <p>Apresentação clara da proposta da plataforma para equipes assistenciais e parceiros.</p>
-          </div>
-          <div class="landing-stat">
-            <span>Navegação simples</span>
-            <strong>Leitura rápida</strong>
-            <p>Estrutura visual pensada para entendimento imediato da solução em poucos passos.</p>
-          </div>
-          <div class="landing-stat">
-            <span>Acesso seguro</span>
-            <strong>Ambiente reservado</strong>
-            <p>Recursos avançados permanecem disponíveis somente após autenticação.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="landingJourney" class="landing-journey reveal" aria-label="como funciona">
-        <div class="section-head landing-journey-head">
-          <h2>Como funciona</h2>
-          <p>Três etapas para apoiar discussão técnica e comunicação assistencial.</p>
-        </div>
-
-        <div class="journey-grid">
-          <article class="journey-step">
-            <p class="step-index">01</p>
-            <h3>Estruturar o caso</h3>
-            <p>Registrar dados essenciais do médico, paciente e contexto da cirurgia para consolidar base clínica mínima.</p>
-          </article>
-
-          <article class="journey-step">
-            <p class="step-index">02</p>
-            <h3>Aplicar trilha técnica</h3>
-            <p>Utilizar questionário guiado ou análise textual para classificar cenário, reforçar critérios e organizar justificativas.</p>
-          </article>
-
-          <article class="journey-step">
-            <p class="step-index">03</p>
-            <h3>Documentar e acompanhar</h3>
-            <p>Gerar solicitação padronizada e acompanhar desfechos para visão comparativa de aderência e complicações.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="landing-trust reveal supplemental-section" aria-label="diretrizes institucionais">
-        <article class="trust-item">
-          <span>Uso previsto</span>
-          <p>Ambiente educacional para qualificação da discussão técnica.</p>
-        </article>
-        <article class="trust-item">
-          <span>Público-alvo</span>
-          <p>Equipes assistenciais, auditoria médica e gestão clínica.</p>
-        </article>
-        <article class="trust-item">
-          <span>Compromisso</span>
-          <p>Padronização documental com rastreabilidade e clareza de comunicação.</p>
-        </article>
-      </section>
-
-      <section class="landing-value reveal supplemental-section" aria-label="valor operacional">
-        <div class="section-head landing-value-head">
-          <h2>Valor operacional</h2>
-          <p>Benefícios percebidos no fluxo de discussão e documentação técnica.</p>
-        </div>
-        <div class="value-grid">
-          <article class="value-card">
-            <h3>Consistência documental</h3>
-            <p>Uniformiza linguagem técnica e reduz variações na elaboração de solicitações.</p>
-          </article>
-          <article class="value-card">
-            <h3>Rastreabilidade clínica</h3>
-            <p>Organiza contexto de decisão com trilha estruturada para revisão multiprofissional.</p>
-          </article>
-          <article class="value-card">
-            <h3>Comunicação objetiva</h3>
-            <p>Facilita alinhamento entre assistência, auditoria e gestão clínica em torno do caso.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="landing-final-cta reveal supplemental-section" aria-label="chamada final para acesso">
-        <div>
-          <p class="eyebrow">Próximo passo</p>
-          <h2>Entre no ambiente interno para utilizar os módulos técnicos do Simple Coluna.</h2>
-        </div>
-        <a id="finalLoginCta" class="admin-btn" href="#loginGate">Ir para login seguro</a>
-      </section>
-
-      <section class="landing-faq reveal supplemental-section" aria-label="perguntas frequentes institucionais">
-        <div class="section-head">
-          <h2>Perguntas frequentes</h2>
-          <p>Resumo rápido para novos usuários institucionais.</p>
-        </div>
-        <div class="faq-grid">
-          <article class="faq-item">
-            <h3>O Simple Coluna substitui decisão médica?</h3>
-            <p>Não. A plataforma tem objetivo educacional e de organização técnica documental.</p>
-          </article>
-          <article class="faq-item">
-            <h3>Quem visualiza os módulos internos?</h3>
-            <p>Apenas usuários autenticados com perfil administrativo autorizado.</p>
-          </article>
-          <article class="faq-item">
-            <h3>Qual ganho prático imediato?</h3>
-            <p>Maior consistência na discussão técnica e melhor padronização das solicitações.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="landing-access reveal" aria-label="acesso rapido">
-        <div>
-          <p class="eyebrow">Acesso em 30 segundos</p>
-          <h2>Fluxo direto para entrar no ambiente interno com segurança.</h2>
-          <ol class="access-steps">
-            <li>Revise a proposta institucional da plataforma.</li>
-            <li>Use o login administrativo autorizado.</li>
-            <li>Acesse os módulos técnicos internos após validação.</li>
-          </ol>
-        </div>
-        <a id="quickAccessLoginBtn" class="admin-btn" href="#loginGate">Continuar para autenticação</a>
-      </section>
-
-      <section id="loginGate" class="login-gate reveal" aria-label="acesso seguro">
-        <div class="login-info">
-          <p class="eyebrow">Acesso seguro</p>
-          <h2>Autenticação para liberar o ambiente técnico interno do Simple Coluna.</h2>
-          <p>
-            A Simple Coluna integra triagem educacional, interpretação estruturada de pedidos e geração de texto
-            padronizado para comunicação técnica entre equipes multiprofissionais.
-          </p>
-          <ul>
-            <li>Fluxo por perguntas com classificação operacional em semáforo.</li>
-            <li>Análise de pedido por texto/arquivo com checklist técnico.</li>
-            <li>Painel interno para gestão de lesões e materiais de referência.</li>
-          </ul>
-        </div>
-
-        <form id="loginForm" class="login-card" autocomplete="on">
-          <h3>Entrar na plataforma</h3>
-          <p>Informe credenciais administrativas para liberar os módulos internos.</p>
-          <p class="login-note">Conexão autenticada em sessão local do navegador.</p>
-
-          <label for="loginEmailInput">
-            E-mail administrativo
-            <input
-              id="loginEmailInput"
-              name="email"
-              type="email"
-              placeholder="administracao@simplecoluna.com"
-              autocomplete="username"
-              required
-            />
+    <section id="loginView" class="center-wrap">
+      <div class="login-panel">
+        <p class="eyebrow">Simple Coluna</p>
+        <h1>Autorizacao cirurgica em fast-track com governanca clinica</h1>
+        <p class="muted">
+          O farol organiza o fluxo: verde acelera, amarelo valida, vermelho redireciona. A decisao clinica permanece do medico.
+        </p>
+        <form id="loginForm" class="stack-gap">
+          <label>
+            Email
+            <input id="loginEmail" type="email" value="medico@simplecoluna.com" required />
           </label>
-
-          <label for="loginPasswordInput">
+          <label>
             Senha
-            <input
-              id="loginPasswordInput"
-              name="password"
-              type="password"
-              placeholder="Informe a senha"
-              autocomplete="current-password"
-              required
-            />
+            <input id="loginPassword" type="password" value="simple123" required />
           </label>
-
-          <button class="admin-btn" type="submit">Entrar</button>
+          <button class="btn" type="submit">Entrar com autenticacao real</button>
+          <p class="hint">Credenciais seed: medico / operadora / hospital / admin @simplecoluna.com com senha simple123.</p>
           <p id="loginFeedback" class="feedback" aria-live="polite"></p>
         </form>
-      </section>
       </div>
+    </section>
 
-      <section id="appArea" class="app-area hidden">
-        <header class="internal-head" aria-label="ambiente interno">
-          <p class="eyebrow">Ambiente interno</p>
-          <h2>Plataforma Simple Coluna</h2>
-          <p>Módulos técnicos com navegação por funcionalidades.</p>
+    <section id="appView" class="app-shell hidden">
+      <aside>
+        <div>
+          <p class="eyebrow">Simple Coluna</p>
+          <h2 id="userRoleTitle">Painel</h2>
+          <p id="userName" class="muted"></p>
+        </div>
+        <nav id="sidebarNav" class="sidebar-nav"></nav>
+        <button id="logoutBtn" class="btn btn-ghost" type="button">Sair</button>
+      </aside>
+
+      <main>
+        <header class="main-head">
+          <h2 id="screenTitle">Carregando...</h2>
+          <p id="screenSubtitle" class="muted"></p>
         </header>
+        <section id="content"></section>
+      </main>
+    </section>
 
-        <div class="internal-shell" aria-label="navegação de funcionalidades internas">
-          <aside class="internal-sidebar">
-            <h2>Funcionalidades</h2>
-            <button class="internal-tab-btn active" data-tab="build" type="button">
-              Construção de pedido assertivo
-            </button>
-            <button class="internal-tab-btn" data-tab="audit" type="button">Sessão de auditoria</button>
-            <button class="internal-tab-btn" data-tab="ranking" type="button">Desempenho profissional</button>
-          </aside>
+    <template id="toastTemplate">
+      <div class="toast"></div>
+    </template>
 
-          <div class="internal-content">
-            <section id="internalTab-build" class="internal-tab-panel active" aria-label="construcao de pedido">
-              <section class="decision-hub" aria-label="fluxos de decisão cirúrgica">
-                <div class="section-head">
-                  <h2>Construção de pedido assertivo</h2>
-                  <p>Passo a passo com queixas do paciente, quadro clínico e algoritmo técnico.</p>
-                </div>
-
-                <div class="request-registry">
-                  <div class="section-head">
-                    <h3>Cadastro de médico e paciente do pedido</h3>
-                    <p>Vincula o pedido cirúrgico ao médico e ao paciente.</p>
-                  </div>
-                  <div class="decision-grid">
-                    <label>
-                      CRM
-                      <input id="doctorCrmInput" type="text" placeholder="Ex.: 123456" />
-                    </label>
-
-                    <label>
-                      UF do CRM
-                      <select id="doctorUfSelect">
-                        <option value="">Selecione</option>
-                        <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
-                        <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
-                        <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
-                        <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-                        <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
-                        <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
-                        <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
-                        <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-                        <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-                      </select>
-                    </label>
-
-                    <label>
-                      Nome do médico (opcional)
-                      <input id="doctorNameInput" type="text" placeholder="Preenchido automaticamente pela consulta CFM" />
-                    </label>
-
-                    <label>
-                      Nome do paciente (opcional)
-                      <input id="patientNameInput" type="text" placeholder="Ex.: João da Silva" />
-                    </label>
-
-                    <label>
-                      Documento do paciente
-                      <input id="patientDocumentInput" type="text" placeholder="Ex.: CPF / Prontuário" />
-                    </label>
-
-                    <label>
-                      Data da cirurgia
-                      <input id="surgeryDateInput" type="date" />
-                    </label>
-                  </div>
-
-                  <div class="decision-actions">
-                    <button id="checkCfmBtn" class="admin-btn secondary" type="button">Buscar CRM</button>
-                  </div>
-
-                  <div class="decision-grid">
-                    <label>
-                      Especialidade
-                      <input id="doctorSpecialtyInput" type="text" placeholder="Preenchido automaticamente" readonly />
-                    </label>
-
-                    <label>
-                      Situação do registro
-                      <input id="doctorStatusInput" type="text" placeholder="Preenchido automaticamente" readonly />
-                    </label>
-                  </div>
-                  <p id="cfmLookupFeedback" class="feedback"></p>
-                </div>
-
-                <div id="questionnairePanel" class="decision-panel">
-                  <div class="decision-grid">
-                                        <fieldset class="choice-group">
-                      <legend>Tipo de cirurgia (múltipla escolha)</legend>
-                      <label class="check-row"><input name="surgeryTypeChoice" type="checkbox" value="cervical" /> Artrodese cervical (via anterior/póstero-lateral)</label>
-                      <label class="check-row"><input name="surgeryTypeChoice" type="checkbox" value="lombar" /> Artrodese lombar (via anterior/póstero-lateral)</label>
-                      <label class="check-row"><input name="surgeryTypeChoice" type="checkbox" value="endoscopica" /> Cirurgia endoscópica de coluna</label>
-                    </fieldset>
-
-                    <fieldset class="choice-group">
-                      <legend>Número de níveis cirúrgicos (múltipla escolha)</legend>
-                      <label class="check-row"><input name="surgeryLevelChoice" type="checkbox" value="1" /> 1 nível</label>
-                      <label class="check-row"><input name="surgeryLevelChoice" type="checkbox" value="2" /> 2 níveis</label>
-                      <label class="check-row"><input name="surgeryLevelChoice" type="checkbox" value="3" /> 3 níveis</label>
-                    </fieldset>
-
-                    <label class="check-row"><input id="redFlagNeuroInput" type="checkbox" /> Déficit neurológico progressivo</label>
-                    <label class="check-row"><input id="redFlagCompressionInput" type="checkbox" /> Sinais de compressão medular/cauda equina</label>
-                    <label class="check-row"><input id="yellowPainInput" type="checkbox" /> Dor intensa persistente (EVA alta)</label>
-                    <label class="check-row"><input id="yellowFailureInput" type="checkbox" /> Falha do tratamento conservador documentada</label>
-                    <label class="check-row"><input id="imageProofInput" type="checkbox" /> Comprovação por imagem disponível</label>
-                    <label class="check-row"><input id="classHighMorbidityInput" type="checkbox" /> Contexto de alta morbimortalidade / risco clínico elevado</label>
-                    <label class="check-row"><input id="classComplexAnatomyInput" type="checkbox" /> Anatomia 3D complexa com risco neurovascular</label>
-                    <label class="check-row"><input id="classNeedPrecisionInput" type="checkbox" /> Necessidade de redução/anatômica de alta precisão</label>
-                    <label class="check-row"><input id="classConventionalLimitInput" type="checkbox" /> Limitação importante da técnica convencional</label>
-
-                    <label>
-                      Limitações funcionais (linguagem clínica)
-                      <textarea id="functionalLimitationsInput" rows="3" placeholder="Ex.: Limitação dolorosa à flexão de quadril; intolerância à deambulação >100 m por dor."></textarea>
-                    </label>
-
-                    <label>
-                      CID-10 principal
-                      <input id="cidInput" type="text" placeholder="Ex.: M50.1" />
-                    </label>
-
-                    <label>
-                      Patologia principal
-                      <input id="mainDiagnosisInput" type="text" placeholder="Ex.: Hérnia de disco lombar com radiculopatia" />
-                    </label>                  </div>
-
-                  <div class="decision-actions">
-                    <button id="generateDecisionBtn" class="admin-btn" type="button">Gerar decisão e pedido padronizado</button>
-                  </div>
-
-                  <div id="decisionResult" class="result-box" aria-live="polite"></div>
-                </div>
-
-                <section class="alert-box" aria-label="aviso importante">
-                  <h2>Aviso importante</h2>
-                  <p>
-                    Esta ferramenta tem finalidade educacional e não substitui avaliação clínica, exame físico,
-                    exames de imagem e decisão médica especializada.
-                  </p>
-                </section>
-              </section>
-            </section>
-
-            <section id="internalTab-audit" class="internal-tab-panel" aria-label="sessao de auditoria">
-              <section class="ranking-window" aria-label="auditoria documental">
-                <div class="section-head">
-                  <h2>Sessão de auditoria</h2>
-                  <p>
-                    Upload do documento para avaliar diretrizes e algoritmos de códigos TUSS, OPME e indicação cirúrgica.
-                  </p>
-                </div>
-
-                <div id="uploadPanel" class="decision-panel">
-                  <div class="decision-grid">
-                    <label>
-                      Upload do pedido (txt, doc, docx, pdf)
-                      <input id="pedidoFileInput" type="file" accept=".txt,.md,.doc,.docx,.pdf" />
-                    </label>
-
-                    <label>
-                      Texto do pedido (opcional para complementar)
-                      <textarea id="pedidoTextInput" rows="10" placeholder="Cole o texto integral do pedido cirúrgico aqui."></textarea>
-                    </label>
-                  </div>
-
-                  <div class="decision-actions">
-                    <button id="analyzePedidoBtn" class="admin-btn" type="button">Auditar documento</button>
-                  </div>
-
-                  <div id="uploadResult" class="result-box" aria-live="polite"></div>
-                </div>
-              </section>
-            </section>
-
-            <section id="internalTab-ranking" class="internal-tab-panel" aria-label="desempenho profissional">
-              <section class="ranking-window" aria-label="desempenho profissional">
-                <div class="section-head">
-                  <h2>Desempenho profissional</h2>
-                  <p>Ranking de médicos com base nos documentos criados e auditados.</p>
-                </div>
-
-                <div class="ranking-grid">
-                  <div class="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Médico</th>
-                          <th>CRM</th>
-                          <th>Documentos</th>
-                          <th>Pontuação final</th>
-                          <th>Como alcançou os pontos</th>
-                        </tr>
-                      </thead>
-                      <tbody id="doctorRankingTableBody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </section>
-            </section>
-          </div>
-        </div>
-
-      <section id="adminSection" class="admin-section hidden" aria-label="painel administrativo">
-        <div class="section-head">
-          <h2>Painel administrativo</h2>
-          <p>Gerencie lesões diretamente no navegador, sem etapa de login.</p>
-        </div>
-
-        <div id="adminManager" class="admin-card">
-          <div class="admin-card-head">
-            <h3>Cadastro de lesão</h3>
-          </div>
-
-          <form id="lesionForm" class="admin-form-grid">
-            <input id="editingId" type="hidden" />
-
-            <label>
-              Nome da lesão
-              <input id="nomeInput" type="text" required />
-            </label>
-
-            <label>
-              Região
-              <select id="regiaoInput" required>
-                <option value="">Selecione</option>
-                <option value="cervical">Cervical</option>
-                <option value="toracica">Torácica</option>
-                <option value="lombar">Lombar</option>
-              </select>
-            </label>
-
-            <label>
-              Sinais de alerta
-              <textarea id="sinaisInput" rows="2" required></textarea>
-            </label>
-
-            <label>
-              Exame sugerido
-              <textarea id="exameInput" rows="2" required></textarea>
-            </label>
-
-            <label>
-              Técnica possível
-              <textarea id="tecnicaInput" rows="2" required></textarea>
-            </label>
-
-            <label>
-              Observações
-              <textarea id="observacoesInput" rows="2"></textarea>
-            </label>
-
-            <label>
-              Materiais (1 por linha: material | codigo | tipo)
-              <textarea id="materiaisInput" rows="4" placeholder="Parafuso pedicular | OPME-LB-201 | Implante" required></textarea>
-            </label>
-
-            <div class="admin-actions">
-              <button class="admin-btn" type="submit">Salvar lesão</button>
-              <button id="newLesionBtn" class="admin-btn secondary" type="button">Novo</button>
-            </div>
-          </form>
-
-          <p id="lesionFormFeedback" class="feedback"></p>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Lesão</th>
-                  <th>Região</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="adminLesionsTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer>
-      <p>Simple Coluna - Construção incremental do portal clínico-educacional</p>
-    </footer>
-
-        <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="app.js?v=20260625-cidfix2"></script>
+    <script src="app.js" defer></script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
