@@ -1,6 +1,7 @@
 ﻿const TOKEN_KEY = "simplecoluna.auth.token.v2";
 const MEDICO_PROFILE_KEY = "simplecoluna.medico.profile.v2";
 const LOCAL_DB_KEY = "simplecoluna.local.db.v1";
+const API_BASE = (document.querySelector('meta[name="simplecoluna-api-base"]')?.content || "").trim().replace(/\/$/, "");
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || "",
@@ -653,6 +654,10 @@ function activateLocalMode() {
   }
 }
 
+function resolveApiUrl(path) {
+  return API_BASE ? `${API_BASE}${path}` : path;
+}
+
 async function api(path, options = {}) {
   if (state.apiMode === "local") {
     return localApi(path, options);
@@ -666,8 +671,10 @@ async function api(path, options = {}) {
     headers.Authorization = `Bearer ${state.token}`;
   }
 
+  const url = resolveApiUrl(path);
+
   try {
-    const response = await fetch(path, { ...options, headers });
+    const response = await fetch(url, { ...options, headers });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       if (response.status === 404 || response.status === 405 || response.status >= 500) {

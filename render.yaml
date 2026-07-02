@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: simple-coluna-api
+    env: node
+    plan: free
+    rootDir: .
+    buildCommand: ""
+    startCommand: "npm start"
+    autoDeploy: true
+    healthCheckPath: /api/bootstrap
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: SIMPLE_COLUNA_SECRET
+        generateValue: true

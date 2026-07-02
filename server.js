@@ -8,6 +8,12 @@ const { evaluateFarol, hasUrgencyCriteria, statusFromFarol } = require("./shared
 const PORT = Number(process.env.PORT || 3000);
 const DB_PATH = path.join(__dirname, "data", "db.json");
 const SECRET = process.env.SIMPLE_COLUNA_SECRET || "simple-coluna-secret";
+const ALLOWED_ORIGINS = [
+  "https://www.simplecoluna.com",
+  "https://simplecoluna.com",
+  "http://localhost:3000",
+  "http://localhost:4173"
+];
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -70,8 +76,22 @@ function verifyToken(token) {
   }
 }
 
-function toJson(res, statusCode, payload) {
-  res.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
+function buildCorsHeaders(req) {
+  const origin = req.headers.origin || "";
+  const allowed = ALLOWED_ORIGINS.includes(origin);
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    Vary: "Origin"
+  };
+}
+
+function toJson(req, res, statusCode, payload) {
+  res.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...buildCorsHeaders(req)
+  });
   res.end(JSON.stringify(payload));
 }
 
@@ -217,30 +237,30 @@ function handleApi(req, res, pathname) {
         const user = db.users.find((u) => u.email === email);
 
         if (!user || user.passwordHash !== sha(password)) {
-          toJson(res, 401, { error: "Credenciais invalidas." });
+          toJson(req, res, 401, { error: "Credenciais invalidas." });
           return;
         }
 
         const token = buildToken({ userId: user.id, role: user.role, exp: Date.now() + 1000 * 60 * 60 * 12 });
-        toJson(res, 200, { token, user: { id: user.id, role: user.role, nome: user.nome, email: user.email } });
+        toJson(req, res, 200, { token, user: { id: user.id, role: user.role, nome: user.nome, email: user.email } });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
   }
 
   const authUser = getAuthUser(req, db);
 
   if (pathname.startsWith("/api/") && !authUser) {
-    toJson(res, 401, { error: "Nao autenticado." });
+    toJson(req, res, 401, { error: "Nao autenticado." });
     return;
   }
 
   if (req.method === "GET" && pathname === "/api/auth/me") {
-    toJson(res, 200, { user: { id: authUser.id, role: authUser.role, nome: authUser.nome, email: authUser.email } });
+    toJson(req, res, 200, { user: { id: authUser.id, role: authUser.role, nome: authUser.nome, email: authUser.email } });
     return;
   }
 
   if (req.method === "GET" && pathname === "/api/bootstrap") {
-    toJson(res, 200, normalizeRoleData(authUser.role, db));
+    toJson(req, res, 200, normalizeRoleData(authUser.role, db));
     return;
   }
 
@@ -248,9 +268,9 @@ function handleApi(req, res, pathname) {
     parseBody(req)
       .then((body) => {
         const preview = computePedido(body, db);
-        toJson(res, 200, preview);
+        toJson(req, res, 200, preview);
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -305,9 +325,9 @@ function handleApi(req, res, pathname) {
           }
         });
         writeDb(db);
-        toJson(res, 201, { pedido });
+        toJson(req, res, 201, { pedido });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -320,13 +340,13 @@ function handleApi(req, res, pathname) {
       pedidos = pedidos.filter((p) => p.hospital === authUser.hospitalPadrao || p.carater === "Urgencia");
     }
 
-    toJson(res, 200, { pedidos });
+    toJson(req, res, 200, { pedidos });
     return;
   }
 
   if (req.method === "DELETE" && pathname === "/api/pedidos/mine") {
     if (authUser.role !== "medico") {
-      toJson(res, 403, { error: "Somente medico." });
+      toJson(req, res, 403, { error: "Somente medico." });
       return;
     }
 
@@ -338,13 +358,13 @@ function handleApi(req, res, pathname) {
       details: { removed: before - db.pedidos.length }
     });
     writeDb(db);
-    toJson(res, 200, { removed: before - db.pedidos.length });
+    toJson(req, res, 200, { removed: before - db.pedidos.length });
     return;
   }
 
   if (req.method === "GET" && pathname === "/api/operadora/kpis") {
     if (!["operadora", "admin"].includes(authUser.role)) {
-      toJson(res, 403, { error: "Acesso restrito." });
+      toJson(req, res, 403, { error: "Acesso restrito." });
       return;
     }
 
@@ -353,28 +373,28 @@ function handleApi(req, res, pathname) {
     const media = total ? db.pedidos.reduce((sum, p) => sum + Number(p.custoTotalCalculado || 0), 0) / total : 0;
     const foraPadrao = db.pedidos.filter((p) => p.acimaTeto || p.farol !== "g").length;
 
-    toJson(res, 200, { total, percentualVerde: total ? (verdes / total) * 100 : 0, custoMedio: media, foraPadrao });
+    toJson(req, res, 200, { total, percentualVerde: total ? (verdes / total) * 100 : 0, custoMedio: media, foraPadrao });
     return;
   }
 
   if (req.method === "GET" && pathname === "/api/hospital/urgencias") {
     if (!["hospital", "admin"].includes(authUser.role)) {
-      toJson(res, 403, { error: "Acesso restrito." });
+      toJson(req, res, 403, { error: "Acesso restrito." });
       return;
     }
 
     const urgencias = db.pedidos.filter((p) => p.carater === "Urgencia");
-    toJson(res, 200, { urgencias });
+    toJson(req, res, 200, { urgencias });
     return;
   }
 
   if (pathname.startsWith("/api/admin/") && authUser.role !== "admin") {
-    toJson(res, 403, { error: "Acesso admin." });
+    toJson(req, res, 403, { error: "Acesso admin." });
     return;
   }
 
   if (req.method === "GET" && pathname === "/api/admin/all") {
-    toJson(res, 200, {
+    toJson(req, res, 200, {
       protocolos: db.protocolos,
       opmeItens: db.opmeItens,
       pacotesOpme: db.pacotesOpme,
@@ -393,9 +413,9 @@ function handleApi(req, res, pathname) {
         db.protocolos.push(item);
         appendAudit(db, { userId: authUser.id, action: "protocolo.create", details: { id: item.id } });
         writeDb(db);
-        toJson(res, 201, { item });
+        toJson(req, res, 201, { item });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -405,15 +425,15 @@ function handleApi(req, res, pathname) {
         const id = pathname.split("/").pop();
         const idx = db.protocolos.findIndex((p) => p.id === id);
         if (idx === -1) {
-          toJson(res, 404, { error: "Nao encontrado" });
+          toJson(req, res, 404, { error: "Nao encontrado" });
           return;
         }
         db.protocolos[idx] = { ...db.protocolos[idx], ...body, id };
         appendAudit(db, { userId: authUser.id, action: "protocolo.update", details: { id } });
         writeDb(db);
-        toJson(res, 200, { item: db.protocolos[idx] });
+        toJson(req, res, 200, { item: db.protocolos[idx] });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -422,7 +442,7 @@ function handleApi(req, res, pathname) {
     db.protocolos = db.protocolos.filter((p) => p.id !== id);
     appendAudit(db, { userId: authUser.id, action: "protocolo.delete", details: { id } });
     writeDb(db);
-    toJson(res, 200, { ok: true });
+    toJson(req, res, 200, { ok: true });
     return;
   }
 
@@ -433,9 +453,9 @@ function handleApi(req, res, pathname) {
         db.opmeItens.push(item);
         appendAudit(db, { userId: authUser.id, action: "opme-item.create", details: { id: item.id } });
         writeDb(db);
-        toJson(res, 201, { item });
+        toJson(req, res, 201, { item });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -445,15 +465,15 @@ function handleApi(req, res, pathname) {
         const id = pathname.split("/").pop();
         const idx = db.opmeItens.findIndex((p) => p.id === id);
         if (idx === -1) {
-          toJson(res, 404, { error: "Nao encontrado" });
+          toJson(req, res, 404, { error: "Nao encontrado" });
           return;
         }
         db.opmeItens[idx] = { ...db.opmeItens[idx], ...body, id };
         appendAudit(db, { userId: authUser.id, action: "opme-item.update", details: { id } });
         writeDb(db);
-        toJson(res, 200, { item: db.opmeItens[idx] });
+        toJson(req, res, 200, { item: db.opmeItens[idx] });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -462,7 +482,7 @@ function handleApi(req, res, pathname) {
     db.opmeItens = db.opmeItens.filter((p) => p.id !== id);
     appendAudit(db, { userId: authUser.id, action: "opme-item.delete", details: { id } });
     writeDb(db);
-    toJson(res, 200, { ok: true });
+    toJson(req, res, 200, { ok: true });
     return;
   }
 
@@ -486,16 +506,16 @@ function handleApi(req, res, pathname) {
           });
           appendAudit(db, { userId: authUser.id, action: "pacote.update", details: { id: old.id, oldTeto: old.teto, newTeto: payload.teto } });
           writeDb(db);
-          toJson(res, 200, { item: db.pacotesOpme[idx] });
+          toJson(req, res, 200, { item: db.pacotesOpme[idx] });
           return;
         }
 
         db.pacotesOpme.push(payload);
         appendAudit(db, { userId: authUser.id, action: "pacote.create", details: { id: payload.id } });
         writeDb(db);
-        toJson(res, 201, { item: payload });
+        toJson(req, res, 201, { item: payload });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -504,7 +524,7 @@ function handleApi(req, res, pathname) {
     db.pacotesOpme = db.pacotesOpme.filter((p) => p.id !== id);
     appendAudit(db, { userId: authUser.id, action: "pacote.delete", details: { id } });
     writeDb(db);
-    toJson(res, 200, { ok: true });
+    toJson(req, res, 200, { ok: true });
     return;
   }
 
@@ -516,16 +536,16 @@ function handleApi(req, res, pathname) {
           db.codigoTuss[idx] = { ...db.codigoTuss[idx], ...body };
           appendAudit(db, { userId: authUser.id, action: "tuss.update", details: { codigo: body.codigo } });
           writeDb(db);
-          toJson(res, 200, { item: db.codigoTuss[idx] });
+          toJson(req, res, 200, { item: db.codigoTuss[idx] });
           return;
         }
 
         db.codigoTuss.push(body);
         appendAudit(db, { userId: authUser.id, action: "tuss.create", details: { codigo: body.codigo } });
         writeDb(db);
-        toJson(res, 201, { item: body });
+        toJson(req, res, 201, { item: body });
       })
-      .catch((err) => toJson(res, 400, { error: err.message }));
+      .catch((err) => toJson(req, res, 400, { error: err.message }));
     return;
   }
 
@@ -534,11 +554,11 @@ function handleApi(req, res, pathname) {
     db.codigoTuss = db.codigoTuss.filter((item) => item.codigo !== codigo);
     appendAudit(db, { userId: authUser.id, action: "tuss.delete", details: { codigo } });
     writeDb(db);
-    toJson(res, 200, { ok: true });
+    toJson(req, res, 200, { ok: true });
     return;
   }
 
-  toJson(res, 404, { error: "Rota nao encontrada" });
+  toJson(req, res, 404, { error: "Rota nao encontrada" });
 }
 
 function serveStatic(req, res, pathname) {
@@ -567,6 +587,12 @@ function serveStatic(req, res, pathname) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, buildCorsHeaders(req));
+    res.end();
+    return;
+  }
 
   if (pathname.startsWith("/api/")) {
     handleApi(req, res, pathname);
